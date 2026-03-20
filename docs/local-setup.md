@@ -12,6 +12,7 @@ All infrastructure runs locally via Docker Compose, mirroring the production AWS
 - Mac type: **Intel Mac**
 - Python: **3.12**
 - PyTorch is installed via pip directly due to a known Poetry + PyTorch incompatibility on Intel Macs
+- Mobile: **Expo (SDK 50+)**
 
 ---
 
@@ -25,32 +26,16 @@ All infrastructure runs locally via Docker Compose, mirroring the production AWS
 
 # Install core dependencies
 brew install node watchman python@3.12 poetry
-
-# Install Docker Desktop
-# Download from https://www.docker.com/products/docker-desktop/
 ```
 
-#### Xcode
+#### Xcode (for iOS Development)
 
-1. Download Xcode from the Mac App Store
-2. Open Xcode once to accept the license agreement
+1. Download Xcode from the Mac App Store.
+2. Open Xcode once to accept the license agreement.
 3. Install command line tools:
 
 ```bash
 xcode-select --install
-```
-
-#### CocoaPods
-
-```bash
-sudo gem install cocoapods
-pod --version
-```
-
-#### React Native CLI
-
-```bash
-npm install -g react-native-cli
 ```
 
 ---
@@ -77,7 +62,10 @@ __pycache__/
 *.pyc
 .venv/
 node_modules/
-ios/Pods/
+.expo/
+dist/
+ios/
+android/
 *.egg-info/
 .DS_Store
 poetry.lock
@@ -85,21 +73,23 @@ poetry.lock
 
 ---
 
-### React Native App
+### Expo App (Mobile Client)
+
+We use Expo for the mobile client to leverage fast refresh, easy hardware access, and the Clerk Expo SDK.
 
 ```bash
 cd ~/digital-closet/mobile
-npx react-native init DigitalCloset
+npx create-expo-app@latest DigitalCloset --yes
 ```
 
-Verify iOS setup:
+Verify the setup:
 
 ```bash
 cd DigitalCloset
-npx react-native run-ios
+npx expo start
 ```
 
-The Xcode simulator should boot and show the default React Native screen. If it works, your iOS toolchain is good.
+Press `i` to open the iOS simulator. If the "Welcome to Expo" screen appears, your mobile toolchain is ready.
 
 ---
 
@@ -139,13 +129,13 @@ Run it:
 poetry run uvicorn main:app --reload --port 8000
 ```
 
-Hit `http://localhost:8000/health` in your browser or Postman — you should get `{"status": "ok"}`.
+Hit `http://localhost:8000/health` in your browser — you should get `{"status": "ok"}`.
 
 ---
 
 ### Worker Service
 
-#### Step 1 — Initialize Poetry and install non-torch dependencies
+#### Step 1 — Initialize Poetry
 
 ```bash
 cd ~/digital-closet/worker
@@ -157,15 +147,13 @@ poetry init \
 poetry add pillow numpy psycopg2-binary pgvector boto3 python-dotenv ultralytics
 ```
 
-#### Step 2 — Install PyTorch via pip inside the Poetry environment
+#### Step 2 — Install PyTorch via pip
 
 Due to a known incompatibility between Poetry and PyTorch on Intel Macs, torch and torchvision are installed directly via pip into the Poetry virtual environment:
 
 ```bash
 poetry shell
-
 pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
-
 exit
 ```
 
@@ -173,35 +161,8 @@ exit
 
 ```bash
 poetry shell
-
 pip install git+https://github.com/openai/CLIP.git
-
 exit
-```
-
-#### Step 4 — Verify
-
-Create `main.py`:
-
-```bash
-touch main.py
-```
-
-Paste in:
-
-```python
-import clip
-import torch
-from ultralytics import YOLO
-
-print(f"Torch version: {torch.__version__}")
-print(f"CLIP and YOLO loaded successfully")
-```
-
-Run it:
-
-```bash
-poetry run python main.py
 ```
 
 ---
@@ -239,54 +200,11 @@ volumes:
   postgres_data:
 ```
 
-Create `~/digital-closet/elasticmq.conf`:
-
-```
-include classpath("application.conf")
-
-queues {
-  photo-uploads {
-    defaultVisibilityTimeout = 90 seconds
-    delay = 0 seconds
-    receiveMessageWait = 0 seconds
-    deadLettersQueue {
-      name = photo-uploads-dlq
-      maxReceiveCount = 3
-    }
-  }
-
-  photo-uploads-dlq {}
-}
-```
-
 Spin up:
 
 ```bash
 cd ~/digital-closet
 docker-compose up -d
-docker-compose ps
-```
-
-Both `digital_closet_postgres` and `digital_closet_sqs` should show as running.
-
----
-
-### Enable pgvector
-
-Connect to Postgres using TablePlus:
-
-```
-host:     localhost
-port:     5432
-user:     digital_closet
-password: digital_closet
-database: digital_closet_dev
-```
-
-Run:
-
-```sql
-CREATE EXTENSION IF NOT EXISTS vector;
 ```
 
 ---
@@ -304,8 +222,6 @@ AWS_SECRET_ACCESS_KEY=dummy
 AWS_DEFAULT_REGION=us-east-1
 ```
 
-Both the API and worker load this file via `python-dotenv` at startup.
-
 ---
 
 ### Final Project Structure
@@ -313,7 +229,7 @@ Both the API and worker load this file via `python-dotenv` at startup.
 ```
 digital-closet/
 ├── mobile/
-│   └── DigitalCloset/         # React Native iOS app
+│   └── DigitalCloset/         # Expo React Native app
 ├── api/
 │   ├── main.py
 │   └── pyproject.toml
@@ -331,12 +247,7 @@ digital-closet/
 
 ### Verify Everything Works
 
-Run through this checklist before writing any feature code:
-
-- [ ] `npx react-native run-ios` boots the Xcode simulator
+- [ ] `npx expo start` boots the app in simulator
 - [ ] `docker-compose ps` shows Postgres and ElasticMQ running
-- [ ] TablePlus connects to local Postgres
-- [ ] pgvector extension enabled
 - [ ] `poetry run uvicorn main:app --reload` serves health check at `localhost:8000/health`
-- [ ] `poetry run python main.py` in worker prints torch version and confirms CLIP and YOLO load
-- [ ] `.env` file in place and loading correctly
+- [ ] `poetry run python main.py` in worker prints torch version

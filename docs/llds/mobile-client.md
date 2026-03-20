@@ -1,26 +1,27 @@
 # Low-Level Design: Mobile Client (iOS)
 
 ## 1. Overview
-The Mobile Client is a React Native iOS application designed for high-frequency outfit logging and wardrobe analytics. It follows a clean, iOS-native aesthetic with a focus on asynchronous processing and glanceable insights.
+The Mobile Client is a React Native iOS application designed for high-frequency outfit logging and wardrobe analytics. It is built using the **Expo** framework to leverage a high-performance, modular technical stack and unified development workflow.
 
 ## 2. Navigation & Global UI
 
-### 2.1 Navigation Structure (Bottom Tabs)
-1.  **Home**: Dashboard for insights and recent activity.
-2.  **Camera**: Visually distinct center tab for capturing/uploading outfits.
-3.  **Closet**: Grid view of all identified clothing items.
+### 2.1 Navigation Structure (Expo Router)
+The app uses **Expo Router** for file-based routing, providing automatic deep linking and type-safe navigation.
+1.  **Home**: `(tabs)/index.tsx` - Dashboard for insights and recent activity.
+2.  **Camera**: `(tabs)/camera.tsx` - Visually distinct center tab for capturing/uploading outfits.
+3.  **Closet**: `(tabs)/closet/index.tsx` - Grid view of all identified clothing items.
 
 ### 2.2 Global Header & Sidebar
 *   **Header**: Displays the app logo (left) and user profile picture (right).
-*   **Sidebar**: Tapping the profile picture slides in a right-aligned menu for Profile, Settings, Subscription, and Logout.
+*   **Sidebar**: Tapping the profile picture slides in a right-aligned menu for Profile, Settings, Subscription, and Logout. UI polish enhanced with **expo-blur** for translucent backgrounds.
 
 ## 3. Screens & Features
 
 ### 3.1 Onboarding Flow
 *   **Welcome**: Value prop and entry point.
-*   **Auth (Clerk)**: Social (Apple/Google) and email/password authentication.
-*   **Permissions**: Sequential request for Camera and Push Notification access.
-*   **Seed Closet**: Optional step to manually add items before the first photo. Recommendation to skip for now and take outfit of the day pictures to not overwhelm.
+*   **Auth (Clerk)**: Integrated via `@clerk/clerk-expo` for seamless social and email authentication.
+*   **Permissions**: Sequential request for Camera and Push Notification access using modular permission hooks.
+*   **Seed Closet**: Optional step to manually add items before the first photo.
 
 ### 3.2 Home (Dashboard)
 *   **Recent Activity**: Cards for the last 3 outfit photos.
@@ -29,8 +30,8 @@ The Mobile Client is a React Native iOS application designed for high-frequency 
 *   **Frequently Worn Together**: AI-surfaced co-wear patterns.
 
 ### 3.3 Camera & Processing
-*   **Viewfinder**: Powered by `react-native-vision-camera`.
-*   **Actions**: Capture button + "Choose from Library" (Gallery access).
+*   **Viewfinder**: Powered by **expo-camera** for robust, cross-device capture.
+*   **Actions**: Capture button (enhanced with **expo-haptics**) + "Choose from Library" (Gallery access).
 *   **Preview**: "Use Photo" triggers S3 upload and processing; "Retake" resets.
 *   **Async Processing UI**: Immediate confirmation screen with a link to the Closet.
 
@@ -40,19 +41,27 @@ The Mobile Client is a React Native iOS application designed for high-frequency 
 *   **Item Detail**: Displays wear history, "Worn With" suggestions, and edit/delete actions.
 
 ### 3.5 Match Resolution
-*   **Confirmation Prompt**: Bottom-sheet modal triggered by push notifications for 0.65 - 0.85 confidence matches.
+*   **Confirmation Prompt**: Bottom-sheet modal triggered by **expo-notifications** for 0.65 - 0.85 confidence matches.
 
 ## 4. Technical Architecture
 
 ### 4.1 State & Data Management
-*   **Auth**: Managed via Clerk's React Native SDK.
-*   **Server State**: `TanStack Query` (React Query) for fetching closet data and dashboard stats with optimistic updates.
-*   **Image Handling**: `react-native-fast-image` for high-performance grid rendering.
+*   **Navigation**: **Expo Router** (File-based routing).
+*   **Auth**: Managed via **Clerk's Expo SDK** (`@clerk/clerk-expo`).
+*   **Server State**: `TanStack Query` (React Query) for fetching closet data and dashboard stats.
+*   **Image Handling**: **expo-image** for high-performance grid rendering, blurhash support, and aggressive caching.
+*   **Camera**: **expo-camera** for standard high-resolution photo capture.
+*   **Icons**: **@expo/vector-icons** for consistent, pre-built iconography.
+*   **Haptics**: **expo-haptics** for tactile feedback on primary actions.
 
 ### 4.2 Background & Connectivity
-*   **Uploads**: Uses `react-native-background-upload` to ensure S3 transfers continue even if the app is minimized.
-*   **Offline Support**: Captures are queued locally and uploaded once a connection is detected via `react-native-netinfo`.
+*   **Uploads**: Uses **expo-file-system** with `FileSystem.createUploadTask` (sessionType: BACKGROUND) to ensure S3 transfers continue even if the app is minimized.
+*   **Push Notifications**: Managed via **expo-notifications** for real-time match resolution alerts.
+*   **Offline Support**: Connection detection via **expo-network**.
 
 ## 5. Security & Permissions
-*   **Keychain**: JWT session tokens stored securely via iOS Keychain.
-*   **Privacy**: Minimal permission requests (Camera, Photo Library, Notifications).
+*   **Secure Storage**: JWT session tokens stored securely via **expo-secure-store**.
+*   **Permissions**: Minimal permission requests using module-specific APIs:
+    *   `Camera.requestCameraPermissionsAsync()`
+    *   `MediaLibrary.requestPermissionsAsync()`
+    *   `Notifications.requestPermissionsAsync()`
