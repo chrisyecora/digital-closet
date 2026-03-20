@@ -1,0 +1,26 @@
+[project]
+name = "digital-closet-worker"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "chrisyecora",email = "chris.yecora@gmail.com"}
+]
+requires-python = ">=3.12,<3.15"
+dependencies = [
+    "pillow",
+    "numpy<2",
+    "psycopg2-binary",
+    "pgvector",
+    "boto3",
+    "python-dotenv"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[[tool.poetry.source]]
+name = "pytorch"
+url = "https://download.pytorch.org/whl/cpu"
+priority = "explicit"

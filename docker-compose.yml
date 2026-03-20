@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: ankane/pgvector
+    container_name: digital_closet_postgres
+    environment:
+      POSTGRES_USER: digital_closet
+      POSTGRES_PASSWORD: digital_closet
+      POSTGRES_DB: digital_closet_dev
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  elasticmq:
+    image: softwaremill/elasticmq-native
+    container_name: digital_closet_sqs
+    ports:
+      - '9324:9324'
+      - '9325:9325'
+    volumes:
+      - ./elasticmq.conf:/opt/elasticmq.conf
+
+volumes:
+  postgres_data:
