@@ -1,0 +1,14 @@
+# Todo: Phase 2.2 ML Worker - Local Development Action Items
+- [ ] Create worker skeleton: worker/ml_worker.py
+  - Path: worker/ml_worker.py
+  - Implement main loop skeleton; parse args; integration points.
+- [ ] Update worker pyproject.toml: add dependencies torch, clip, ultralytics, pillow, torchvision, boto3
+- [ ] Implement SQS client consumer (Local): poll message from local ElasticMQ `photo-uploads` queue; set visibility timeout; handle deletion after success; implement idempotent guard by checking Photo status in DB.
+- [ ] Implement S3 fetch logic (Local): use shared s3_client configured for MinIO; fetch image by s3_key from the message.
+- [ ] YOLO Inference: load Ultralytics YOLO model; perform inference; identify clothing item classes; extract bounding boxes; crop images to pass to CLIP
+- [ ] CLIP Embeddings: run CLIP to generate embedding for each cropped region; create 512-dim embedding vectors; store in pgvector in local DB with reference to photo and clothing item if any.
+- [ ] Database integration: ensure there are models for Embeddings; update ClothingItem with embedding; handle new items or matches accordingly.
+- [ ] Idempotency safeguards: ensure reprocessing does not duplicate entries; use a dedup key per photo.
+- [ ] Logging & errors: structured logs; define exceptions and retry policy.
+- [ ] Tests: create smoke tests for 2-2 path with local mocks (MinIO/ElasticMQ); test idempotency; test SQS consumption; test DB writes.
+- [ ] Documentation: update worker/README with local end-to-end steps and environment requirements.
