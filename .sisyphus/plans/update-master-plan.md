@@ -18,18 +18,18 @@ Update `docs/specs/closet-management-specs.md` to remove the daily wear count li
 
 - [x] Phase 2.1 Backend S3 presigned URL generation and wiring to POST /photos
 - [x] Edit `docs/MASTER_PLAN.md` > `Phase 2.3 Vector Matching Engine (pgvector)`
-  - [ ] Add the `+0.05` confidence boost logic if the detected `sub_category` matches the database record (ref: `PHOTO-DB-002`).
-  - [ ] **Ensure that no "once per day" limit is added to the routing logic.**
+  - [x] Add the `+0.05` confidence boost logic if the detected `sub_category` matches the database record (ref: `PHOTO-DB-002`).
+  - [x] **Ensure that no "once per day" limit is added to the routing logic.**
 
 ### Phase 3: Update MASTER_PLAN.md (UI/UX)
-- [ ] Edit `docs/MASTER_PLAN.md` > `Phase 3.2 Closet Dashboard`
-  - [ ] Explicitly list the required dashboard sections: "Recent Activity", "Most Worn", "Dormant Items", and "Frequently Worn Together" (ref: `CLOSET-UI-005`).
-- [ ] Edit `docs/MASTER_PLAN.md` > `Phase 3.3 Item Management`
-  - [ ] Add the backend requirement that manually added items must initialize with a `worn_count` of zero (ref: `CLOSET-API-004`).
-- [ ] Edit `docs/MASTER_PLAN.md` > `Phase 3.4 Match Resolution`
-  - [ ] Expand the endpoint description to explicitly support both `"confirmed"` and `"corrected"` statuses.
-  - [ ] Specify that `"corrected"` status must include a `clothing_item_id` for manual reassignment and wear count adjustment (ref: `CLOSET-API-002`).
+- [x] Edit `docs/MASTER_PLAN.md` > `Phase 3.2 Closet Dashboard`
+  - [x] Explicitly list the required dashboard sections: "Recent Activity", "Most Worn", "Dormant Items", and "Frequently Worn Together" (ref: `CLOSET-UI-005`).
+- [x] Edit `docs/MASTER_PLAN.md` > `Phase 3.3 Item Management`
+  - [x] Add the backend requirement that manually added items must initialize with a `worn_count` of zero (ref: `CLOSET-API-004`).
+- [x] Edit `docs/MASTER_PLAN.md` > `Phase 3.4 Match Resolution`
+  - [x] Expand the endpoint description to explicitly support both `"confirmed"` and `"corrected"` statuses.
+  - [x] Specify that `"corrected"` status must include a `clothing_item_id` for manual reassignment and wear count adjustment (ref: `CLOSET-API-002`).
 
 ## Final Verification Wave
-- [ ] **Specs Check**: Review `CLOSET-DB-001` to ensure the daily limit is removed. Review `docs/MASTER_PLAN.md` to ensure the remaining gaps are explicitly represented.
-- [ ] **Formatting Check**: Ensure the markdown structure (checkboxes, indentation, headings) remains perfectly intact and matches the surrounding style.
+- [x] **Specs Check**: Review `CLOSET-DB-001` to ensure the daily limit is removed. Review `docs/MASTER_PLAN.md` to ensure the remaining gaps are explicitly represented.
+- [x] **Formatting Check**: Ensure the markdown structure (checkboxes, indentation, headings) remains perfectly intact and matches the surrounding style.
