@@ -35,8 +35,10 @@ This project follows a **Design-Driven Development** approach. All major feature
 
 ### Documentation Map
 - **High-Level Design (HLD)**: `docs/high-level-design.md`
+- **System Design**: `docs/system-design.md`
+- **Project Overview**: `docs/project-overview.md`
 - **Low-Level Designs (LLDs)**: Located in `docs/llds/` (e.g., `api-gateway.md`, `inference-worker.md`, `mobile-client.md`).
-- **Technical Specifications**: Located in `docs/specs/` (e.g., `auth-specs.md`, `closet-management-specs.md`).
+- **Technical Specifications**: Located in `docs/specs/` (e.g., `auth-specs.md`, `closet-management-specs.md`, `onboarding-specs.md`, `photo-processing-specs.md`).
 - **Local Setup**: `docs/local-setup.md`
 - **Roadmap**: `docs/mvp-roadmap.md`
 
