@@ -17,7 +17,7 @@ Update `docs/specs/closet-management-specs.md` to remove the daily wear count li
   - [ ] Change the requirement to: "**Where** multiple distinct photos are logged, the system **shall** increment the `worn_count` for an item independently for each photo, relying on queue idempotency to prevent duplicate processing of the same photo."
 
 ### Phase 2: Update MASTER_PLAN.md (Core Pipeline)
-- [ ] Edit `docs/MASTER_PLAN.md` > `Phase 2.3 Vector Matching Engine (pgvector)`
+- [x] Edit `docs/MASTER_PLAN.md` > `Phase 2.3 Vector Matching Engine (pgvector)`
   - [ ] Add the `+0.05` confidence boost logic if the detected `sub_category` matches the database record (ref: `PHOTO-DB-002`).
   - [ ] **Ensure that no "once per day" limit is added to the routing logic.**
 
