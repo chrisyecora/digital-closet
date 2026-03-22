@@ -31,6 +31,6 @@ These specs define the UI and API behavior for the user's digital wardrobe dashb
 | ID | Requirement (EARS) | Status |
 |----|-------------------|--------|
 | **CLOSET-API-003** | **When** stats are requested, the API **shall** return the total item count, top 5 most worn items this month, and co-wear patterns. | [ ] |
-| **CLOSET-DB-001** | **Where** multiple photos are logged on the same day, the system **shall** only increment the `worn_count` for an item once per day. | [ ] |
+| **CLOSET-DB-001** | **Where** multiple distinct photos are logged on the same day, the system **shall** process each photo independently and use per-photo idempotency at the queue/backend layer to prevent duplicate processing of the same photo. | [ ] |
 | **CLOSET-SYS-001** | **Where** a user's account has a "Free" tier, the API **shall** restrict access to outfit history older than 6 months. | [ ] |
 | **CLOSET-UI-008** | **When** a "Free" user attempts to access history beyond 6 months, the Mobile Client **shall** display the Subscription/Paywall screen. | [ ] |
