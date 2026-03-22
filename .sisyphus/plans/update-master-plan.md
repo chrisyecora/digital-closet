@@ -14,7 +14,7 @@ Update `docs/specs/closet-management-specs.md` to remove the daily wear count li
 
 ### Phase 1: Update Specifications
 - [x] Edit `docs/specs/closet-management-specs.md` > `CLOSET-DB-001`
-  - [ ] Change the requirement to: "**Where** multiple distinct photos are logged, the system **shall** increment the `worn_count` for an item independently for each photo, relying on queue idempotency to prevent duplicate processing of the same photo."
+  - [x] Change the requirement to: "**Where** multiple distinct photos are logged, the system **shall** increment the `worn_count` for an item independently for each photo, relying on queue idempotency to prevent duplicate processing of the same photo."
 
 - [x] Phase 2.1 Backend S3 presigned URL generation and wiring to POST /photos
 - [x] Edit `docs/MASTER_PLAN.md` > `Phase 2.3 Vector Matching Engine (pgvector)`
