@@ -1,11 +1,12 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useAuth, useSignUp } from '@clerk/expo';
-import { type Href, Link, useRouter } from 'expo-router';
+import { type Href, useRouter } from 'expo-router';
 import React from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { useThemeColor } from '@/hooks/use-theme-color';
 
-export default function Page() {
+export function SignUpForm() {
   const { signUp, errors, fetchStatus } = useSignUp();
   const { isSignedIn } = useAuth();
   const router = useRouter();
@@ -14,7 +15,15 @@ export default function Page() {
   const [password, setPassword] = React.useState('');
   const [code, setCode] = React.useState('');
 
+  const primaryColor = useThemeColor({}, 'primary');
+  const textColor = useThemeColor({}, 'text');
+  const backgroundColor = useThemeColor({}, 'background');
+  const secondaryText = useThemeColor({}, 'secondaryText');
+  const actionText = useThemeColor({}, 'actionText');
+  const errorColor = useThemeColor({}, 'error');
+
   const handleSubmit = async () => {
+    if (!signUp) return;
     const { error } = await signUp.password({
       emailAddress,
       password,
@@ -28,6 +37,7 @@ export default function Page() {
   };
 
   const handleVerify = async () => {
+    if (!signUp) return;
     await signUp.verifications.verifyEmailCode({
       code,
     });
@@ -52,7 +62,7 @@ export default function Page() {
     }
   };
 
-  if (signUp.status === 'complete' || isSignedIn) {
+  if (!signUp || signUp.status === 'complete' || isSignedIn) {
     return null;
   }
 
@@ -67,19 +77,20 @@ export default function Page() {
           Verify your account
         </ThemedText>
         <TextInput
-          style={styles.input}
+          style={[styles.input, { borderColor: secondaryText, color: textColor, backgroundColor }]}
           value={code}
           placeholder='Enter your verification code'
-          placeholderTextColor='#666666'
+          placeholderTextColor={secondaryText}
           onChangeText={(code) => setCode(code)}
           keyboardType='numeric'
         />
-        {errors.fields.code && (
-          <ThemedText style={styles.error}>{errors.fields.code.message}</ThemedText>
+        {errors?.fields?.code && (
+          <ThemedText style={[styles.error, { color: errorColor }]}>{errors.fields.code.message}</ThemedText>
         )}
         <Pressable
           style={({ pressed }) => [
             styles.button,
+            { backgroundColor: primaryColor },
             fetchStatus === 'fetching' && styles.buttonDisabled,
             pressed && styles.buttonPressed,
           ]}
@@ -89,10 +100,15 @@ export default function Page() {
           <ThemedText style={styles.buttonText}>Verify</ThemedText>
         </Pressable>
         <Pressable
-          style={({ pressed }) => [styles.secondaryButton, pressed && styles.buttonPressed]}
+          style={({ pressed }) => [
+            styles.secondaryButton,
+            pressed && styles.buttonPressed,
+          ]}
           onPress={() => signUp.verifications.sendEmailCode()}
         >
-          <ThemedText style={styles.secondaryButtonText}>I need a new code</ThemedText>
+          <ThemedText style={[styles.secondaryButtonText, { color: actionText }]}>
+            I need a new code
+          </ThemedText>
         </Pressable>
       </ThemedView>
     );
@@ -104,34 +120,35 @@ export default function Page() {
         Sign up
       </ThemedText>
 
-      <ThemedText style={styles.label}>Email address</ThemedText>
+      <ThemedText style={[styles.label, { color: secondaryText }]}>Email address</ThemedText>
       <TextInput
-        style={styles.input}
+        style={[styles.input, { borderColor: secondaryText, color: textColor, backgroundColor }]}
         autoCapitalize='none'
         value={emailAddress}
         placeholder='Enter email'
-        placeholderTextColor='#666666'
+        placeholderTextColor={secondaryText}
         onChangeText={(emailAddress) => setEmailAddress(emailAddress)}
         keyboardType='email-address'
       />
-      {errors.fields.emailAddress && (
-        <ThemedText style={styles.error}>{errors.fields.emailAddress.message}</ThemedText>
+      {errors?.fields?.emailAddress && (
+        <ThemedText style={[styles.error, { color: errorColor }]}>{errors.fields.emailAddress.message}</ThemedText>
       )}
-      <ThemedText style={styles.label}>Password</ThemedText>
+      <ThemedText style={[styles.label, { color: secondaryText }]}>Password</ThemedText>
       <TextInput
-        style={styles.input}
+        style={[styles.input, { borderColor: secondaryText, color: textColor, backgroundColor }]}
         value={password}
         placeholder='Enter password'
-        placeholderTextColor='#666666'
+        placeholderTextColor={secondaryText}
         secureTextEntry={true}
         onChangeText={(password) => setPassword(password)}
       />
-      {errors.fields.password && (
-        <ThemedText style={styles.error}>{errors.fields.password.message}</ThemedText>
+      {errors?.fields?.password && (
+        <ThemedText style={[styles.error, { color: errorColor }]}>{errors.fields.password.message}</ThemedText>
       )}
       <Pressable
         style={({ pressed }) => [
           styles.button,
+          { backgroundColor: primaryColor },
           (!emailAddress || !password || fetchStatus === 'fetching') && styles.buttonDisabled,
           pressed && styles.buttonPressed,
         ]}
@@ -140,15 +157,6 @@ export default function Page() {
       >
         <ThemedText style={styles.buttonText}>Sign up</ThemedText>
       </Pressable>
-      {/* For your debugging purposes. You can just console.log errors, but we put them in the UI for convenience */}
-      {errors && <ThemedText style={styles.debug}>{JSON.stringify(errors, null, 2)}</ThemedText>}
-
-      <View style={styles.linkContainer}>
-        <ThemedText>Already have an account? </ThemedText>
-        <Link href='/sign-in'>
-          <ThemedText type='link'>Sign in</ThemedText>
-        </Link>
-      </View>
 
       {/* Required for sign-up flows. Clerk's bot sign-up protection is enabled by default */}
       <View nativeID='clerk-captcha' />
@@ -158,8 +166,6 @@ export default function Page() {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    padding: 20,
     gap: 12,
   },
   title: {
@@ -170,47 +176,39 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   input: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
+    borderWidth: 1.5,
+    borderRadius: 12,
     padding: 12,
     fontSize: 16,
-    backgroundColor: '#fff',
   },
   button: {
-    backgroundColor: '#0a7ea4',
-    paddingVertical: 12,
+    paddingVertical: 14,
     paddingHorizontal: 24,
-    borderRadius: 8,
+    borderRadius: 12,
     alignItems: 'center',
     marginTop: 8,
   },
   buttonPressed: {
-    opacity: 0.7,
+    opacity: 0.8,
   },
   buttonDisabled: {
     opacity: 0.5,
   },
   buttonText: {
     color: '#fff',
-    fontWeight: '600',
+    fontWeight: '700',
+    fontSize: 16,
   },
   secondaryButton: {
     paddingVertical: 12,
     paddingHorizontal: 24,
-    borderRadius: 8,
+    borderRadius: 12,
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: 4,
   },
   secondaryButtonText: {
-    color: '#0a7ea4',
     fontWeight: '600',
-  },
-  linkContainer: {
-    flexDirection: 'row',
-    gap: 4,
-    marginTop: 12,
-    alignItems: 'center',
+    fontSize: 15,
   },
   error: {
     color: '#d32f2f',
