@@ -1,46 +1,51 @@
-import { Show, useClerk, useUser } from '@clerk/expo';
-import { Link } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useAuth, useUser } from '@clerk/expo';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
 
 export default function Page() {
   const { user } = useUser();
-  const { signOut } = useClerk();
+  const { signOut } = useAuth();
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Welcome!</Text>
-      <Show when='signed-out'>
-        <Link href='/(auth)'>
-          <Text>Sign In / Sign Up</Text>
-        </Link>
-      </Show>
-      <Show when='signed-in'>
-        <Text>Hello {user?.emailAddresses[0].emailAddress}</Text>
-        <Pressable style={styles.button} onPress={() => signOut()}>
-          <Text style={styles.buttonText}>Sign out</Text>
+    <ThemedView style={styles.container}>
+      <View style={styles.content}>
+        <ThemedText type="title">Welcome!</ThemedText>
+        <ThemedText style={styles.email}>
+          Hello, {user?.primaryEmailAddress?.emailAddress}
+        </ThemedText>
+        <Pressable 
+          style={styles.button} 
+          onPress={() => signOut()}
+        >
+          <ThemedText style={styles.buttonText}>Sign out</ThemedText>
         </Pressable>
-      </Show>
-    </View>
+      </View>
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
     padding: 20,
-    paddingTop: 60,
+  },
+  content: {
+    alignItems: 'center',
     gap: 16,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
+  email: {
+    fontSize: 16,
+    opacity: 0.8,
   },
   button: {
-    backgroundColor: '#0a7ea4',
+    backgroundColor: '#A99B75',
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 8,
-    alignItems: 'center',
+    marginTop: 10,
   },
   buttonText: {
     color: '#fff',
