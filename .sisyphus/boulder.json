@@ -3,7 +3,13 @@
   "started_at": "2026-03-22T04:14:47.238Z",
   "session_ids": [
     "ses_2ec45d8c2ffeGF0RxXZIMMG3oh",
-    "ses_2ec3e5ab2ffekfnpnNn0d5ofA3"
+    "ses_2ec3e5ab2ffekfnpnNn0d5ofA3",
+    "ses_2ec295f05ffeT0pyHh8AXtyeGD",
+    "ses_2ec2976faffedLh4cRZQCimXCq",
+    "ses_2ec28c501ffeGWTG5r16Su8IVE",
+    "ses_2ec206d68ffeih6MqJ0MgejlmB",
+    "ses_2ec075045ffe1qbDdIsDdV91oV",
+    "ses_2ebf6a49effeJne7aaePRQMfko"
   ],
   "plan_name": "update-master-plan",
   "agent": "atlas"
