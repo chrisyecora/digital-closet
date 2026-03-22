@@ -1,11 +1,13 @@
 import { ThemedText } from '@/components/themed-text';
 import { useSignIn, useSignUp, useOAuth, useClerk } from '@clerk/expo';
-import { type Href, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Pressable, StyleSheet, TextInput, View, ActivityIndicator, Platform } from 'react-native';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { Ionicons } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
+import * as Camera from 'expo-camera';
+import * as Notifications from 'expo-notifications';
 
 interface AuthFormProps {
   isSignIn: boolean;
@@ -14,8 +16,8 @@ interface AuthFormProps {
 export function AuthForm({ isSignIn }: AuthFormProps) {
   const router = useRouter();
   const clerk = useClerk();
-  const { signIn, fetchStatus: signInStatus } = useSignIn();
-  const { signUp, fetchStatus: signUpStatus } = useSignUp();
+  const { signIn } = useSignIn();
+  const { signUp } = useSignUp();
 
   const { startOAuthFlow: startGoogleOAuthFlow } = useOAuth({ strategy: 'oauth_google' });
   const { startOAuthFlow: startAppleOAuthFlow } = useOAuth({ strategy: 'oauth_apple' });
@@ -49,7 +51,7 @@ export function AuthForm({ isSignIn }: AuthFormProps) {
       }
     }, 150);
     return () => clearTimeout(timer);
-  }, [isSignIn, signIn?.status, signUp?.status]);
+  }, [isSignIn, signIn?.status, signUp?.status, signUp?.unverifiedFields]);
 
   const [emailAddress, setEmailAddress] = useState('');
   const [password, setPassword] = useState('');
@@ -64,36 +66,37 @@ export function AuthForm({ isSignIn }: AuthFormProps) {
   const errorColor = useThemeColor({}, 'error');
   const alternateColor = useThemeColor({}, 'alternate');
 
-  const onAuthSuccess = useCallback(async (isNewUser: boolean = false) => {
+  const onAuthSuccess = useCallback(async (sessionId: string) => {
     if (clerk.setActive) {
-      const sessionId = isSignIn ? signIn?.createdSessionId : signUp?.createdSessionId;
-      if (sessionId) {
-        await clerk.setActive({ session: sessionId });
-        if (isNewUser) {
-          router.replace('/(auth)/permissions' as any);
+      try {
+        const { status: cameraStatus } = await Camera.Camera.getCameraPermissionsAsync();
+        const { status: notifStatus } = await Notifications.getPermissionsAsync();
+
+        // If either permission is undetermined (we haven't asked), show permissions screen
+        if (cameraStatus === 'undetermined' || notifStatus === 'undetermined') {
+          router.replace('/(auth)/permissions');
         } else {
-          router.replace('/' as any);
+          // Already asked for both, go to home
+          router.replace('/');
         }
+      } catch (error) {
+        console.error('Error checking permissions:', error);
+        router.replace('/');
+      } finally {
+        await clerk.setActive({ session: sessionId });
       }
     }
-  }, [isSignIn, signIn?.createdSessionId, signUp?.createdSessionId, router, clerk]);
+  }, [router, clerk]);
 
   const handleOAuth = async (strategy: 'google' | 'apple') => {
     setIsLoading(true);
     setError(null);
     try {
       const startFlow = strategy === 'google' ? startGoogleOAuthFlow : startAppleOAuthFlow;
-      const { createdSessionId, setActive, signUp: oauthSignUp } = await startFlow();
+      const { createdSessionId } = await startFlow();
 
-      if (createdSessionId && setActive) {
-        await setActive({ session: createdSessionId });
-        // If it's a new user (signup), redirect to permissions
-        const isNewUser = !!oauthSignUp;
-        if (isNewUser) {
-          router.replace('/(auth)/permissions' as any);
-        } else {
-          router.replace('/' as any);
-        }
+      if (createdSessionId) {
+        await onAuthSuccess(createdSessionId);
       }
     } catch (err: any) {
       console.error('OAuth error:', err);
@@ -120,9 +123,13 @@ export function AuthForm({ isSignIn }: AuthFormProps) {
       }
 
       if (signIn.status === 'complete') {
-        await onAuthSuccess();
+        if (signIn.createdSessionId) await onAuthSuccess(signIn.createdSessionId);
       } else if (signIn.status === 'needs_second_factor') {
-        await signIn.mfa.sendEmailCode();
+        const { error: sendError } = await signIn.mfa.sendEmailCode();
+        if (sendError) {
+          setError(sendError.message);
+          return;
+        }
       }
     } catch (err: any) {
       console.error(JSON.stringify(err, null, 2));
@@ -147,7 +154,7 @@ export function AuthForm({ isSignIn }: AuthFormProps) {
       }
 
       if (signIn.status === 'complete') {
-        await onAuthSuccess();
+        if (signIn.createdSessionId) await onAuthSuccess(signIn.createdSessionId);
       }
     } catch (err: any) {
       console.error(JSON.stringify(err, null, 2));
@@ -173,7 +180,11 @@ export function AuthForm({ isSignIn }: AuthFormProps) {
         return;
       }
 
-      await signUp.verifications.sendEmailCode();
+      const { error: sendError } = await signUp.verifications.sendEmailCode();
+      if (sendError) {
+        setError(sendError.message);
+        return;
+      }
     } catch (err: any) {
       console.error(JSON.stringify(err, null, 2));
       setError('An unexpected error occurred');
@@ -197,7 +208,7 @@ export function AuthForm({ isSignIn }: AuthFormProps) {
       }
 
       if (signUp.status === 'complete') {
-        await onAuthSuccess(true);
+        if (signUp.createdSessionId) await onAuthSuccess(signUp.createdSessionId);
       }
     } catch (err: any) {
       console.error(JSON.stringify(err, null, 2));
@@ -209,9 +220,20 @@ export function AuthForm({ isSignIn }: AuthFormProps) {
 
   const handleSubmit = isSignIn ? handleSignIn : handleSignUp;
   const handleVerify = isSignIn ? handleSignInVerify : handleSignUpVerify;
-  const handleResend = isSignIn
-    ? () => signIn?.mfa.sendEmailCode()
-    : () => signUp?.verifications.sendEmailCode();
+  const handleResend = async () => {
+    setError(null);
+    try {
+      if (isSignIn) {
+        const result = await signIn?.mfa.sendEmailCode();
+        if (result?.error) setError(result.error.message);
+      } else {
+        const result = await signUp?.verifications.sendEmailCode();
+        if (result?.error) setError(result.error.message);
+      }
+    } catch (err: any) {
+      setError(err.errors?.[0]?.message || 'Failed to resend code');
+    }
+  };
 
   const isVerifying = isSignIn
     ? signIn?.status === 'needs_client_trust'
