@@ -1,148 +1,133 @@
 # Digital Closet - Agentic Engineering Team
 
-This document defines the roles, constraints, and standards for AI agents operating in the `digital-closet` repository. All agents MUST use the `gemini-3-auto` model.
-
-## 🤖 Agent Roles
-
-### @master (Chief Architect)
-- **Model:** `gemini-3-auto`
-- **Role:** High-level strategy and architectural oversight. Interprets the "vibe" and mandates from `GEMINI.md`.
-- **Constraint:** Read-only. Never writes code. Focuses on minimizing token usage in task delegation and ensuring design-first compliance.
-- **Mandate:** Must approve all major architectural changes before implementation.
-
-### @pm (Project Manager)
-- **Model:** `gemini-3-auto`
-- **Role:** Task verification and coordination. Updates `TODO.md` (if it exists) based on @master's architecture.
-- **Workflow:** Only triggers @frontend or @backend when dependencies are met.
-- **Constraint:** Does not write code. Focuses on task status and dependency management.
-
-### @frontend (UI Engineer)
-- **Model:** `gemini-3-auto`
-- **Role:** Fast UI iterations using React Native (Expo) and Tailwind-like styling.
-- **Scope:** `./mobile/DigitalCloset/app`, `./mobile/DigitalCloset/components`, `./mobile/DigitalCloset/hooks`.
-- **Constraint:** Must use themed components from `@/components` to ensure visual consistency.
-
-### @backend (Systems Engineer)
-- **Model:** `gemini-3-auto`
-- **Role:** API, Database logic, and ML Worker implementation.
-- **Scope:** `./api`, `./worker`, `./migrations`.
-- **Constraint:** Must ensure all database changes are accompanied by an Alembic migration.
-
-### @fullstack (Integration)
-- **Model:** `gemini-3-auto`
-- **Role:** Connects UI to API. Handles environment variables, configuration, and end-to-end flows.
-- **Scope:** Cross-cutting concerns between `mobile/` and `api/`.
-
-### @product-owner (QA)
-- **Model:** `gemini-3-auto`
-- **Role:** Sanity checker. Ensures the app runs, linting passes, and mandates are followed before finishing a session.
-- **Mandate:** Must run `npm run lint` and verify health checks before sign-off.
+This document outlines the roles, constraints, testing procedures, and standards for AI agents operating in the `digital-closet` repository. Read this completely before writing code.
 
 ---
 
-## 🛠️ Build & Development Commands
+## 🛠️ Build, Lint, and Test Commands
 
-### Infrastructure (Docker)
-- **Start Services:** `docker compose up -d` (Postgres/pgvector, ElasticMQ/SQS)
-- **Stop Services:** `docker compose down`
-- **Logs:** `docker compose logs -f`
+**Agents must verify changes before completion.** Execute linting and tests immediately after modifying code.
 
-### API Service (FastAPI)
-- **Install:** `cd api && poetry install`
-- **Run Dev:** `cd api && poetry run uvicorn main:app --reload --port 8000`
-- **Migrations:** `cd api && poetry run alembic upgrade head`
-- **Create Migration:** `cd api && poetry run alembic revision --autogenerate -m "description"`
-- **Shell:** `cd api && poetry shell`
+### 🐍 Backend (API & Worker)
+- **Install dependencies:** `cd api && poetry install` or `cd worker && poetry install`
+- **Run dev server:** `cd api && poetry run uvicorn main:app --reload --port 8000`
+- **Run migrations:** `cd api && poetry run alembic upgrade head`
+- **Generate migration:** `cd api && poetry run alembic revision --autogenerate -m "description"`
+- **Linting:** (Use Ruff if installed, otherwise PEP8 rules) `cd api && poetry run ruff check .` and `poetry run ruff format .`
+- **Type Checking:** `cd api && poetry run mypy .`
 
-### Worker Service (ML)
-- **Install:** `cd worker && poetry install`
-- **Run:** `cd worker && poetry run python main.py`
-- **Note:** PyTorch/CLIP are side-loaded via pip in the poetry env on Intel Macs.
+**🧪 Running Python Tests (pytest)**
+- **All tests:** `cd api && poetry run pytest`
+- **Single test file:** `cd api && poetry run pytest tests/test_items.py`
+- **Single test function (CRITICAL for agents):** `cd api && poetry run pytest tests/test_items.py::test_create_item`
+- **With verbose output (for debugging):** `cd api && poetry run pytest -vv -s tests/test_items.py::test_create_item`
 
-### Mobile App (Expo/iOS)
-- **Install:** `cd mobile/DigitalCloset && npm install`
-- **Start:** `cd mobile/DigitalCloset && npx expo start`
-- **iOS Simulator:** `cd mobile/DigitalCloset && npx expo start --ios`
-- **Lint:** `cd mobile/DigitalCloset && npm run lint`
-- **Reset:** `cd mobile/DigitalCloset && npm run reset-project`
+### 📱 Frontend (Mobile App - Expo/React Native)
+- **Install dependencies:** `cd mobile/DigitalCloset && npm install`
+- **Start Expo Server:** `cd mobile/DigitalCloset && npx expo start`
+- **Linting:** `cd mobile/DigitalCloset && npm run lint`
+
+**🧪 Running TypeScript Tests (Jest)**
+- **All tests:** `cd mobile/DigitalCloset && npm test`
+- **Single test file:** `cd mobile/DigitalCloset && npm test -- path/to/file.test.tsx`
+- **Single test case (CRITICAL for agents):** `cd mobile/DigitalCloset && npm test -- -t "should render correctly"`
+
+### 🐳 Infrastructure
+- **Start Services (Postgres, ElasticMQ):** `docker compose up -d`
 
 ---
 
 ## 📏 Code Style Guidelines
 
-### General Mandates
-1. **Design First**: Consult `docs/llds/` or `docs/specs/` before any code changes. Update docs if the implementation diverges.
-2. **Type Safety**: Strict type hinting in Python (Pydantic/Type Hints) and TypeScript (Interfaces/Types).
-3. **Environment Isolation**: Use `.env` files. Never hardcode secrets or URLs.
-4. **Database Migrations**: All schema changes MUST use Alembic.
+Agents must strictly mimic the surrounding style. Do not introduce new libraries without explicit need.
 
-### Python (API & Worker)
-- **Formatting**: Follow PEP 8. Use snake_case for variables/functions, PascalCase for classes.
-- **Imports**: Group standard library, third-party, and local imports. Use absolute imports where possible.
-- **Error Handling**: Use FastAPI's `HTTPException` for API errors.
-  ```python
-  raise HTTPException(status_code=404, detail="Item not found")
-  ```
-- **Async**: Use `async def` for route handlers and I/O bound operations.
-- **Naming**: Files should be snake_case (e.g., `db_models.py`).
+### 🐍 Python (API & Worker - FastAPI/SQLAlchemy)
+1. **Formatting:** Follow strict PEP 8. Use standard 4-space indentation. 
+2. **Naming Conventions:**
+   - **Variables/Functions:** `snake_case` (e.g., `process_image_data`)
+   - **Classes:** `PascalCase` (e.g., `DatabaseManager`)
+   - **Constants:** `UPPER_SNAKE_CASE` (e.g., `MAX_RETRIES`)
+   - **File Names:** `snake_case.py` (e.g., `db_models.py`)
+3. **Imports:**
+   - Group sequentially: Standard library imports -> Third-party imports -> Local application imports.
+   - Use absolute imports over relative imports where feasible (`from api.core.config import settings`).
+4. **Types:** Strict type hinting is mandatory (`Pydantic` models for validation, `typing` for function signatures). Use modern Python 3.12+ features (e.g., `list[str]` instead of `List[str]`).
+5. **Error Handling:** 
+   - Use FastAPI's `HTTPException` for routing errors: `raise HTTPException(status_code=404, detail="Not found")`
+   - Handle external API/DB failures with `try/except` and log errors appropriately. Do not swallow exceptions blindly.
+6. **Async/Await:** Use `async def` for all API route handlers, DB queries, and external I/O bound operations.
 
-### TypeScript (Mobile/React Native)
-- **Formatting**: Single quotes, semicolons, 2-space indentation.
-- **Components**: Functional components with hooks. Use PascalCase for filenames and component names.
-- **Imports**: Use `@/` alias for internal paths (e.g., `@/components/themed-text`).
-- **Styles**: Use `StyleSheet.create` for component-specific styles. Prefer themed components from `@/components`.
-- **Promises**: Use `void` for floating promises that don't need awaiting.
-  ```typescript
-  void WebBrowser.warmUpAsync();
-  ```
-- **Naming**: Files should be kebab-case (e.g., `themed-text.tsx`).
+### 📘 TypeScript (Mobile - React Native/Expo)
+1. **Formatting:** Use Prettier rules if applicable. 2-space indentation, single quotes (`'`), and mandatory semicolons (`;`).
+2. **Naming Conventions:**
+   - **Components/Interfaces:** `PascalCase` (e.g., `UserProfile`, `ButtonProps`)
+   - **Variables/Functions/Hooks:** `camelCase` (e.g., `handlePress`, `useAuth`)
+   - **File Names:** `kebab-case.tsx` (e.g., `themed-text.tsx`, `user-profile.ts`)
+3. **Imports:**
+   - Sort standard library -> Third-party (React/Expo) -> Internal components.
+   - Use absolute path aliases when possible: `@/components/`, `@/hooks/`.
+4. **Types:** 
+   - Strictly type all props, state, and function returns. Avoid `any`. Use `interface` over `type` for object definitions where possible.
+5. **Components & Styling:**
+   - Use Functional Components with hooks.
+   - Use `StyleSheet.create` for component-specific styles. Do not use inline styles unless necessary for dynamic layout.
+   - Utilize existing themed components from `@/components` to ensure visual consistency.
+6. **Error Handling & Promises:**
+   - Handle promise rejections using `try/catch` in async functions.
+   - Use the `void` operator for floating promises (e.g., `void WebBrowser.warmUpAsync();`).
 
 ---
 
-## 🧪 Testing Guidelines
-*Note: The project currently lacks a formal test suite. When adding tests:*
-- **Backend**: Use `pytest` and `httpx.AsyncClient` for API testing.
-- **Mobile**: Use `jest` and `react-test-renderer` or `testing-library/react-native`.
-- **Command**: `pytest` (API) or `npm test` (Mobile).
-- **Single Test**: `pytest path/to/test.py::test_name` or `npm test -- -t 'test name'`.
+## 🤖 Agent Roles & Constraints
+
+- **@master (Chief Architect):** Read-only. Strategic oversight. Must approve major structural changes. Consults `docs/llds/`.
+- **@frontend (UI Engineer):** Builds React Native (Expo) iterations. Scoped to `./mobile/DigitalCloset/`. Relies on `@/components`.
+- **@backend (Systems Engineer):** FastAPI and ML logic. Scoped to `./api/`, `./worker/`, and `./migrations/`. Always uses Alembic for DB changes.
+- **@fullstack (Integration):** Wires the UI to the API. Handles env configs safely.
+- **@product-owner (QA):** Agentic sanity checker. Ensures the app compiles, runs, and linting passes before concluding a session.
+
+---
+
+## 🔐 Environment & Mandates
+
+1. **Design First:** Read `docs/llds/` or `docs/specs/` before executing code changes.
+2. **Environment Variables:** Reference `.env`. Never hardcode keys like `CLERK_SECRET_KEY` or `DATABASE_URL`.
+3. **Database Migrations:** You MUST use Alembic for any SQLAlchemy model changes.
+4. **No Chitchat Comments:** Add code comments only for complex logic ("why" not "what"). Do not use comments to explain changes to the user.
+5. **Revert Rule:** Do not revert changes unless they break the build/tests or the user explicitly commands it.
 
 ---
 
 ## 📝 Documentation Map
-- **HLD**: `docs/high-level-design.md` - Architectural overview.
-- **System Design**: `docs/system-design.md` - Component interactions.
-- **LLDs**: `docs/llds/` - Detailed design for specific services.
-- **Specs**: `docs/specs/` - Feature requirements and logic.
-- **Setup**: `docs/local-setup.md` - Environment configuration.
+- **HLD:** `docs/high-level-design.md` - Architectural overview.
+- **System Design:** `docs/system-design.md` - Component interactions.
+- **LLDs:** `docs/llds/` - Detailed design for specific services (always read these before beginning).
+- **Specs:** `docs/specs/` - Feature requirements and logic.
+- **Setup:** `docs/local-setup.md` - Environment configuration.
 
 ---
 
-## 🚀 Git Workflow
-- **Commit Messages**: Use imperative mood (e.g., "Add photo upload endpoint").
-- **Branching**: Use descriptive branch names (e.g., `feat/auth-integration`).
-- **PRs**: Include a summary of changes and reference relevant issues or docs.
+## 🚀 Git Workflow & Version Control
+1. **Commit Messages:** Use the imperative mood (e.g., "Add photo upload endpoint", "Fix navigation bug in wardrobe"). Keep the first line under 72 characters.
+2. **Commit Granularity:** Make atomic, logical commits. Do not lump unrelated changes together.
+3. **Branching:** Use descriptive branch names like `feat/auth-integration`, `fix/camera-permissions`, or `chore/dependency-updates`.
+4. **Pull Requests:** Provide a clear summary of changes, reasoning, and any follow-up tasks required.
 
 ---
 
-## 📂 Project Structure
-- `api/`: FastAPI backend service.
-- `worker/`: ML inference worker (YOLO/CLIP).
-- `mobile/DigitalCloset/`: React Native Expo application.
-- `migrations/`: Alembic database migrations.
-- `docs/`: Project documentation (HLD, LLDs, Specs).
+## 📂 Repository Structure & Purpose
+- `api/`: The backend core. Contains FastAPI routes, SQLAlchemy models, Pydantic schemas, and external API integrations.
+- `worker/`: Background jobs and ML processing logic (e.g., PyTorch, YOLO, CLIP, Background task runners).
+- `mobile/DigitalCloset/`: The frontend application powered by React Native Expo and Expo Router.
+- `docs/`: Comprehensive documentation suite containing specs, designs, and architectural decisions.
+- `migrations/`: Holds Alembic database migrations. Do not manually edit generated migration logic without testing.
 
 ---
 
-## 🔐 Environment Variables
-- `DATABASE_URL`: PostgreSQL connection string.
-- `SQS_ENDPOINT`: Local ElasticMQ or AWS SQS endpoint.
-- `SQS_QUEUE_URL`: URL for the photo processing queue.
-- `CLERK_PUBLISHABLE_KEY`: Clerk authentication key (Mobile).
-- `CLERK_SECRET_KEY`: Clerk authentication key (API).
+## 🛑 Tooling & Model Constraints
+- **Context7 MCP:** Always use Context7 when I need library/API documentation, code generation, setup or configuration steps without me having to explicitly ask.
+- Avoid conversational filler in code. Your output must strictly be the necessary solution to the user's problem.
+- When you do an open-ended search, use tools efficiently and parallelize operations (e.g., globbing multiple files at once).
+- Do not make broad assumptions about unread files. Always `read` before you `edit`.
+- **Cursor/Copilot Defaults:** Adhere to common IDE conventions, formatters, and auto-completions as configured in `.vscode` or specific workspace files. Ensure that the generated code is seamlessly compatible with Copilot and Cursor autocomplete workflows.
 
----
-
-## 🛠️ How to use this file
-1. **Read First**: Every agent session should start by reading this file.
-2. **Follow Mandates**: Adhere to the "Design First" and "Type Safety" mandates.
-3. **Verify**: Use the provided commands to verify your work before completion.
