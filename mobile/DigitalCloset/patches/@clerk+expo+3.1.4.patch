@@ -1,0 +1,35 @@
+diff --git a/node_modules/@clerk/expo/dist/specs/NativeClerkModule.d.ts b/node_modules/@clerk/expo/dist/specs/NativeClerkModule.d.ts
+index bb69bc7..4cf7a1e 100644
+--- a/node_modules/@clerk/expo/dist/specs/NativeClerkModule.d.ts
++++ b/node_modules/@clerk/expo/dist/specs/NativeClerkModule.d.ts
+@@ -8,6 +8,6 @@ export interface Spec extends TurboModule {
+     getClientToken(): Promise<string | null>;
+     signOut(): Promise<void>;
+ }
+-declare const _default: Spec | null;
++declare const _default: Spec;
+ export default _default;
+ //# sourceMappingURL=NativeClerkModule.d.ts.map
+\ No newline at end of file
+diff --git a/node_modules/@clerk/expo/dist/specs/NativeClerkModule.js b/node_modules/@clerk/expo/dist/specs/NativeClerkModule.js
+index d538cfd..33250f8 100644
+--- a/node_modules/@clerk/expo/dist/specs/NativeClerkModule.js
++++ b/node_modules/@clerk/expo/dist/specs/NativeClerkModule.js
+@@ -23,5 +23,5 @@ __export(NativeClerkModule_exports, {
+ module.exports = __toCommonJS(NativeClerkModule_exports);
+ var import_react_native = require("react-native");
+ var _a, _b;
+-var NativeClerkModule_default = (_b = (_a = import_react_native.TurboModuleRegistry) == null ? void 0 : _a.get("ClerkExpo")) != null ? _b : null;
++var NativeClerkModule_default = import_react_native.TurboModuleRegistry.get("ClerkExpo");
+ //# sourceMappingURL=NativeClerkModule.js.map
+\ No newline at end of file
+diff --git a/node_modules/@clerk/expo/src/specs/NativeClerkModule.ts b/node_modules/@clerk/expo/src/specs/NativeClerkModule.ts
+index ad1464e..1c38d2c 100644
+--- a/node_modules/@clerk/expo/src/specs/NativeClerkModule.ts
++++ b/node_modules/@clerk/expo/src/specs/NativeClerkModule.ts
+@@ -11,4 +11,4 @@ export interface Spec extends TurboModule {
+   signOut(): Promise<void>;
+ }
+ 
+-export default TurboModuleRegistry?.get<Spec>('ClerkExpo') ?? null;
++export default TurboModuleRegistry.get<Spec>('ClerkExpo');
