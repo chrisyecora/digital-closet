@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { StyleSheet, View, Pressable, Linking, Image, Alert } from 'react-native';
+import { StyleSheet, View, Pressable, Linking, Alert, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { 
   Camera, 
@@ -11,17 +11,34 @@ import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
+import Animated, { 
+  useSharedValue, 
+  useAnimatedStyle, 
+  withTiming
+} from 'react-native-reanimated';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useThemeColor } from '@/hooks/use-theme-color';
+
+const { width: windowWidth, height: windowHeight } = Dimensions.get('window');
 
 export default function CameraScreen() {
   const router = useRouter();
   const isFocused = useIsFocused();
   const { hasPermission, requestPermission } = useCameraPermission();
   const [photo, setPhoto] = useState<PhotoFile | { uri: string } | null>(null);
+  const [isAnimating, setIsAnimating] = useState(false);
   const cameraRef = useRef<Camera>(null);
+
+  // Animation values
+  const imageWidth = useSharedValue(windowWidth);
+  const imageHeight = useSharedValue(windowHeight);
+  const imageTop = useSharedValue(0);
+  const imageLeft = useSharedValue(0);
+  const imageBorderRadius = useSharedValue(0);
+  const imageOpacity = useSharedValue(1);
+  const overlayOpacity = useSharedValue(1);
 
   // Explicitly select the physical wide-angle camera (1x)
   const device = useCameraDevice('back', {
@@ -81,11 +98,51 @@ export default function CameraScreen() {
     if (photo) {
       const uri = 'path' in photo ? `file://${photo.path}` : photo.uri;
       console.log('Using photo:', uri);
-      setPhoto(null);
-      router.push({
-        pathname: '/(home)/items/add',
-        params: { photoUri: uri }
-      });
+      
+      setIsAnimating(true);
+      
+      // Target values for the camera tab icon (approximate position)
+      // The camera icon is usually centered horizontally at the bottom
+      const targetWidth = 56;
+      const targetHeight = 56;
+      const targetLeft = (windowWidth / 2) - (targetWidth / 2);
+      const targetTop = windowHeight - 90; // Approximate offset for bottom tab bar
+      
+      overlayOpacity.value = withTiming(0, { duration: 200 });
+
+      // Animate the image shrinking down into the tab bar camera icon
+      imageWidth.value = withTiming(targetWidth, { duration: 500 });
+      imageHeight.value = withTiming(targetHeight, { duration: 500 });
+      imageTop.value = withTiming(targetTop, { duration: 500 });
+      imageLeft.value = withTiming(targetLeft, { duration: 500 });
+      imageBorderRadius.value = withTiming(targetWidth / 2, { duration: 500 });
+      imageOpacity.value = withTiming(0, { duration: 600 });
+      
+      // Simulate upload delay
+      setTimeout(() => {
+        Alert.alert(
+          "Item Uploaded!",
+          "Your item has been uploaded and will be processed by the ML engine.",
+          [{ text: "OK", onPress: () => router.navigate('/(home)/(tabs)/closet') }]
+        );
+      }, 1500);
+
+      // Once the animation concludes, reset the state and navigate home
+      setTimeout(() => {
+        setPhoto(null);
+        setIsAnimating(false);
+        // Reset animation values for the next time
+        imageWidth.value = windowWidth;
+        imageHeight.value = windowHeight;
+        imageTop.value = 0;
+        imageLeft.value = 0;
+        imageBorderRadius.value = 0;
+        imageOpacity.value = 1;
+        overlayOpacity.value = 1;
+        
+        router.navigate('/');
+      }, 600);
+      
     } else {
       setPhoto(null);
       router.navigate('/');
@@ -95,6 +152,25 @@ export default function CameraScreen() {
   const retakePhoto = () => {
     setPhoto(null);
   };
+
+  const animatedImageStyle = useAnimatedStyle(() => {
+    return {
+      width: imageWidth.value,
+      height: imageHeight.value,
+      top: imageTop.value,
+      left: imageLeft.value,
+      borderRadius: imageBorderRadius.value,
+      opacity: imageOpacity.value,
+      position: 'absolute',
+      overflow: 'hidden',
+    };
+  });
+
+  const animatedOverlayStyle = useAnimatedStyle(() => {
+    return {
+      opacity: overlayOpacity.value,
+    };
+  });
 
   if (!hasPermission) {
     return (
@@ -145,28 +221,31 @@ export default function CameraScreen() {
     const photoUri = 'path' in photo ? `file://${photo.path}` : photo.uri;
     return (
       <View style={styles.container}>
-        <Image source={{ uri: photoUri }} style={StyleSheet.absoluteFillObject} />
-        <SafeAreaView style={styles.overlayContainer} edges={['top', 'bottom']}>
-          <View style={styles.previewTopBar}>
-            <Pressable onPress={retakePhoto} style={styles.iconButton}>
-              <Ionicons name="close" size={28} color="#fff" />
-            </Pressable>
-          </View>
-          
-          <View style={styles.previewBottomBar}>
-            <Pressable style={styles.retakeButton} onPress={retakePhoto}>
-              <ThemedText style={styles.retakeButtonText}>Retake</ThemedText>
-            </Pressable>
+        <Animated.Image source={{ uri: photoUri }} style={[styles.absoluteFillObject, animatedImageStyle]} />
+        <Animated.View style={[StyleSheet.absoluteFillObject, animatedOverlayStyle]} pointerEvents="box-none">
+          <SafeAreaView style={styles.overlayContainer} edges={['top', 'bottom']}>
+            <View style={styles.previewTopBar}>
+              <Pressable onPress={retakePhoto} style={styles.iconButton}>
+                <Ionicons name="close" size={28} color="#fff" />
+              </Pressable>
+            </View>
             
-            <Pressable 
-              style={[styles.usePhotoButton, { backgroundColor: primaryColor }]} 
-              onPress={usePhoto}
-            >
-              <ThemedText style={styles.usePhotoText}>Use Photo</ThemedText>
-              <Ionicons name="checkmark" size={20} color="#fff" style={{ marginLeft: 8 }} />
-            </Pressable>
-          </View>
-        </SafeAreaView>
+            <View style={styles.previewBottomBar}>
+              <Pressable style={styles.retakeButton} onPress={retakePhoto}>
+                <ThemedText style={styles.retakeButtonText}>Retake</ThemedText>
+              </Pressable>
+              
+              <Pressable 
+                style={[styles.usePhotoButton, { backgroundColor: primaryColor }]} 
+                onPress={usePhoto}
+                disabled={isAnimating}
+              >
+                <ThemedText style={styles.usePhotoText}>Use Photo</ThemedText>
+                <Ionicons name="checkmark" size={20} color="#fff" style={{ marginLeft: 8 }} />
+              </Pressable>
+            </View>
+          </SafeAreaView>
+        </Animated.View>
       </View>
     );
   }
@@ -217,6 +296,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 32,
+  },
+  absoluteFillObject: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    bottom: 0,
+    right: 0,
   },
   permissionTitle: {
     fontSize: 24,

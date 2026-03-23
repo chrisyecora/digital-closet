@@ -5,14 +5,14 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { useRouter } from 'expo-router';
-import * as Camera from 'expo-camera';
+// import * as Camera from 'expo-camera';
 import * as Notifications from 'expo-notifications';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function PermissionsScreen() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [cameraStatus, setCameraStatus] = useState<string | null>(null);
+  // const [cameraStatus, setCameraStatus] = useState<string | null>(null);
   const [notificationStatus, setNotificationStatus] = useState<string | null>(null);
 
   const primaryColor = useThemeColor({}, 'primary');
@@ -22,8 +22,8 @@ export default function PermissionsScreen() {
   const requestPermissions = async () => {
     setLoading(true);
     try {
-      const { status: camStatus } = await Camera.Camera.requestCameraPermissionsAsync();
-      setCameraStatus(camStatus);
+      // const { status: camStatus } = await Camera.Camera.requestCameraPermissionsAsync();
+      // setCameraStatus(camStatus);
 
       const { status: notifStatus } = await Notifications.requestPermissionsAsync();
       setNotificationStatus(notifStatus);
@@ -50,7 +50,7 @@ export default function PermissionsScreen() {
           </View>
 
           <View style={styles.permissionList}>
-            <View style={[styles.permissionItem, { borderColor: alternateColor }]}>
+            {/* <View style={[styles.permissionItem, { borderColor: alternateColor }]}>
               <View style={[styles.iconContainer, { backgroundColor: alternateColor }]}>
                 <Ionicons name="camera" size={24} color={primaryColor} />
               </View>
@@ -60,7 +60,7 @@ export default function PermissionsScreen() {
                   Used to snap photos of your outfits and identify clothing items.
                 </ThemedText>
               </View>
-            </View>
+            </View> */}
 
             <View style={[styles.permissionItem, { borderColor: alternateColor }]}>
               <View style={[styles.iconContainer, { backgroundColor: alternateColor }]}>

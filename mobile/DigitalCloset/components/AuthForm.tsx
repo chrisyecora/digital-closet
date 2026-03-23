@@ -6,7 +6,7 @@ import { Pressable, StyleSheet, TextInput, View, ActivityIndicator, Platform } f
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { Ionicons } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
-import * as Camera from 'expo-camera';
+// import * as Camera from 'expo-camera';
 import * as Notifications from 'expo-notifications';
 
 interface AuthFormProps {
@@ -69,11 +69,11 @@ export function AuthForm({ isSignIn }: AuthFormProps) {
   const onAuthSuccess = useCallback(async (sessionId: string) => {
     if (clerk.setActive) {
       try {
-        const { status: cameraStatus } = await Camera.Camera.getCameraPermissionsAsync();
+//         const { status: cameraStatus } = await Camera.Camera.getCameraPermissionsAsync();
         const { status: notifStatus } = await Notifications.getPermissionsAsync();
 
         // If either permission is undetermined (we haven't asked), show permissions screen
-        if (cameraStatus === 'undetermined' || notifStatus === 'undetermined') {
+        if (notifStatus === 'undetermined') {
           router.replace('/(auth)/permissions');
         } else {
           // Already asked for both, go to home
