@@ -9,7 +9,12 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.christopheryecora.DigitalCloset",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Digital Closet needs access to your camera to identify and track your clothing items.",
+        "NSPhotoLibraryUsageDescription": "Digital Closet needs access to your photo library to upload clothing items."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -19,7 +24,11 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.CAMERA"
+      ],
+      "package": "com.christopheryecora.DigitalCloset"
     },
     "web": {
       "output": "static",
@@ -27,6 +36,7 @@
     },
     "plugins": [
       "expo-router",
+      "expo-image-picker",
       [
         "expo-splash-screen",
         {
@@ -40,7 +50,15 @@
         }
       ],
       "expo-secure-store",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "react-native-vision-camera",
+        {
+          "cameraPermissionText": "Digital Closet needs access to your camera to identify and track your clothing items.",
+          "enableCodeScanner": true
+        }
+      ],
+      "./plugins/withDisableUserScriptSandboxing.js"
     ],
     "experiments": {
       "typedRoutes": true,

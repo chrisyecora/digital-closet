@@ -74,7 +74,7 @@ export default function Dashboard() {
       </ThemedText>
       <Pressable 
         style={[styles.addButton, { backgroundColor: primaryColor }]}
-        onPress={() => router.push('/(home)/items/add')}
+        onPress={() => router.push('/(home)/(tabs)/camera')}
       >
         <Ionicons name="camera" size={20} color="#fff" style={styles.addButtonIcon} />
         <ThemedText style={styles.addButtonText}>Snap First Outfit</ThemedText>
@@ -153,7 +153,7 @@ export default function Dashboard() {
         {mockItems.length > 0 && (
           <Pressable 
             style={[styles.fab, { backgroundColor: primaryColor }]}
-            onPress={() => router.push('/(home)/items/add')}
+            onPress={() => router.push('/(home)/(tabs)/camera')}
             accessibilityLabel="Add item"
           >
             <Ionicons name="add" size={32} color="#fff" />
