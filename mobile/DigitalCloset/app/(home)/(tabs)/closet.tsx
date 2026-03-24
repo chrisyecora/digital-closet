@@ -7,11 +7,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
+import Animated from 'react-native-reanimated';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { mockItems, Category, ClosetItem } from '@/data/mockItems';
+
+const AnimatedImage = Animated.createAnimatedComponent(Image);
+const TypedFlashList = FlashList as any;
 
 const CATEGORIES: { label: string; value: Category | 'All' }[] = [
   { label: 'All', value: 'All' },
@@ -45,10 +49,11 @@ export default function Dashboard() {
         router.push(`/(home)/items/${item.id}`);
       }}
     >
-      <Image 
+      <AnimatedImage 
         source={{ uri: item.imageUrl }} 
         style={styles.cardImage} 
         transition={200}
+        sharedTransitionTag={`item-image-${item.id}`}
       />
       {item.isDormant && (
         <View style={[styles.dormantBadge, { backgroundColor: errorColor }]}>
@@ -100,7 +105,7 @@ export default function Dashboard() {
         <View style={styles.header}>
           <View>
             <ThemedText type="title">Closet</ThemedText>
-            <ThemedText style={{ color: secondaryText }}>
+            <ThemedText style={[styles.headerSubtitle, { color: secondaryText }]}>
               {mockItems.length} items
             </ThemedText>
           </View>
@@ -155,7 +160,7 @@ export default function Dashboard() {
           {mockItems.length === 0 ? (
             renderEmptyState()
           ) : (
-            <FlashList
+            <TypedFlashList
               data={filteredItems}
               renderItem={renderItem}
               estimatedItemSize={200}
@@ -202,6 +207,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 10,
     paddingBottom: 20,
+  },
+  headerSubtitle: {
+    // Colors handled inline via useThemeColor
   },
   profileButton: {
     padding: 4,

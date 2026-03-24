@@ -6,10 +6,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
 import { BottomSheetModal, BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
+import Animated from 'react-native-reanimated';
 
 import { ThemedText } from '@/components/themed-text';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { mockItems, ClosetItem } from '@/data/mockItems';
+
+const AnimatedImage = Animated.createAnimatedComponent(Image);
 
 const SKELETON_BG_LIGHT = '#E0E0E0';
 const SKELETON_BG_DARK = '#333333';
@@ -18,7 +21,7 @@ export default function ItemDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  
+
   const [item, setItem] = useState<ClosetItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [itemName, setItemName] = useState('');
@@ -30,7 +33,7 @@ export default function ItemDetailScreen() {
   const primaryColor = useThemeColor({}, 'primary');
   const errorColor = useThemeColor({}, 'error');
   const cardColor = useThemeColor({}, 'secondary');
-  
+
   const isDarkMode = backgroundColor === '#1A1918'; // based on theme.ts dark bg
   const skeletonColor = isDarkMode ? SKELETON_BG_DARK : SKELETON_BG_LIGHT;
 
@@ -52,7 +55,7 @@ export default function ItemDetailScreen() {
     const fetchItem = async () => {
       setLoading(true);
       setTimeout(() => {
-        const foundItem = mockItems.find(i => i.id === id);
+        const foundItem = mockItems.find((i) => i.id === id);
         if (foundItem) {
           setItem(foundItem);
           setItemName(foundItem.name || foundItem.category);
@@ -60,7 +63,7 @@ export default function ItemDetailScreen() {
         setLoading(false);
       }, 500);
     };
-    
+
     fetchItem();
   }, [id]);
 
@@ -99,16 +102,13 @@ export default function ItemDetailScreen() {
             <View style={[styles.tagSkeleton, { backgroundColor: skeletonColor }]} />
           </View>
           <View style={[styles.statsSkeleton, { backgroundColor: skeletonColor }]} />
-          
+
           <View style={[styles.sectionTitleSkeleton, { backgroundColor: skeletonColor }]} />
           <View style={[styles.historySkeleton, { backgroundColor: skeletonColor }]} />
         </View>
-        <Pressable 
-          style={[styles.backButton, { top: insets.top + 10 }]} 
-          onPress={handleGoBack}
-        >
+        <Pressable style={[styles.backButton, { top: insets.top + 10 }]} onPress={handleGoBack}>
           <View style={styles.backButtonBg}>
-            <Ionicons name="chevron-back" size={24} color="#FFF" />
+            <Ionicons name='chevron-back' size={24} color='#FFF' />
           </View>
         </Pressable>
       </View>
@@ -126,14 +126,19 @@ export default function ItemDetailScreen() {
     );
   }
 
-  const wornWithItems = mockItems.filter(i => item.wornWith.includes(i.id));
+  const wornWithItems = mockItems.filter((i) => item.wornWith.includes(i.id));
 
   return (
     <View style={[styles.container, { backgroundColor }]}>
       <ScrollView contentContainerStyle={styles.scrollContent} bounces={false}>
         {/* Hero Image */}
         <View style={styles.imageContainer}>
-          <Image source={{ uri: item.imageUrl }} style={styles.heroImage} />
+          <AnimatedImage 
+            source={{ uri: item.imageUrl }} 
+            style={styles.heroImage} 
+            contentFit="cover"
+            sharedTransitionTag={`item-image-${item.id}`}
+          />
         </View>
 
         <View style={styles.contentContainer}>
@@ -142,11 +147,11 @@ export default function ItemDetailScreen() {
             style={[styles.titleInput, { color: textColor }]}
             value={itemName}
             onChangeText={setItemName}
-            placeholder="Item Name"
+            placeholder='Item Name'
             placeholderTextColor={secondaryText}
             maxLength={50}
           />
-          
+
           {/* Tags */}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tagsScroll}>
             <View style={[styles.tag, { backgroundColor: cardColor }]}>
@@ -172,22 +177,34 @@ export default function ItemDetailScreen() {
           {/* Stats Row */}
           <View style={styles.statsRow}>
             <View style={[styles.statCard, { backgroundColor: cardColor }]}>
-              <ThemedText type="defaultSemiBold" style={styles.statValue}>{item.wearCount}</ThemedText>
+              <ThemedText type='defaultSemiBold' style={styles.statValue}>
+                {item.wearCount}
+              </ThemedText>
               <ThemedText style={[styles.statLabel, { color: secondaryText }]}>Worn</ThemedText>
             </View>
             <View style={[styles.statCard, { backgroundColor: cardColor }]}>
-              <ThemedText type="defaultSemiBold" style={styles.statValue}>{formatDate(item.lastWorn)}</ThemedText>
-              <ThemedText style={[styles.statLabel, { color: secondaryText }]}>Last Worn</ThemedText>
+              <ThemedText type='defaultSemiBold' style={styles.statValue}>
+                {formatDate(item.lastWorn)}
+              </ThemedText>
+              <ThemedText style={[styles.statLabel, { color: secondaryText }]}>
+                Last Worn
+              </ThemedText>
             </View>
             <View style={[styles.statCard, { backgroundColor: cardColor }]}>
-              <ThemedText type="defaultSemiBold" style={styles.statValue}>{formatDate(item.firstLogged)}</ThemedText>
-              <ThemedText style={[styles.statLabel, { color: secondaryText }]}>First Logged</ThemedText>
+              <ThemedText type='defaultSemiBold' style={styles.statValue}>
+                {formatDate(item.firstLogged)}
+              </ThemedText>
+              <ThemedText style={[styles.statLabel, { color: secondaryText }]}>
+                First Logged
+              </ThemedText>
             </View>
           </View>
 
           {/* Outfit History */}
           <View style={styles.section}>
-            <ThemedText type="subtitle" style={styles.sectionTitle}>Outfit History</ThemedText>
+            <ThemedText type='subtitle' style={styles.sectionTitle}>
+              Outfit History
+            </ThemedText>
             {item.outfitHistory.length > 0 ? (
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 {item.outfitHistory.map((outfit) => (
@@ -210,19 +227,25 @@ export default function ItemDetailScreen() {
 
           {/* Worn With */}
           <View style={styles.section}>
-            <ThemedText type="subtitle" style={styles.sectionTitle}>Worn With</ThemedText>
+            <ThemedText type='subtitle' style={styles.sectionTitle}>
+              Worn With
+            </ThemedText>
             {wornWithItems.length > 0 ? (
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 {wornWithItems.map((relatedItem) => (
-                  <Pressable 
-                    key={relatedItem.id} 
+                  <Pressable
+                    key={relatedItem.id}
                     style={styles.relatedItem}
                     onPress={() => {
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                       router.push(`/(home)/items/${relatedItem.id}`);
                     }}
                   >
-                    <Image source={{ uri: relatedItem.imageUrl }} style={styles.relatedImage} />
+                    <AnimatedImage 
+                      source={{ uri: relatedItem.imageUrl }} 
+                      style={styles.relatedImage} 
+                      sharedTransitionTag={`item-image-${relatedItem.id}`}
+                    />
                     <ThemedText numberOfLines={1} style={styles.relatedName}>
                       {relatedItem.name || relatedItem.category}
                     </ThemedText>
@@ -240,33 +263,33 @@ export default function ItemDetailScreen() {
 
           {/* Action Buttons */}
           <View style={styles.actionsContainer}>
-            <Pressable 
+            <Pressable
               style={[styles.editButton, { backgroundColor: primaryColor }]}
               onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
             >
               <ThemedText style={styles.editButtonText}>Edit Details</ThemedText>
             </Pressable>
-            
+
             <Pressable style={styles.deleteButton} onPress={handlePresentModalPress}>
               <ThemedText style={[styles.deleteButtonText, { color: errorColor }]}>
                 Delete Item
               </ThemedText>
             </Pressable>
           </View>
-          
+
           {/* Bottom padding for scrollability */}
           <View style={{ height: insets.bottom + 20 }} />
         </View>
       </ScrollView>
 
       {/* Absolute Back Button */}
-      <Pressable 
-        style={[styles.backButton, { top: insets.top + 10 }]} 
+      <Pressable
+        style={[styles.backButton, { top: insets.top + 10 }]}
         onPress={handleGoBack}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
         <View style={styles.backButtonBg}>
-          <Ionicons name="chevron-back" size={24} color="#FFF" />
+          <Ionicons name='chevron-back' size={24} color='#FFF' />
         </View>
       </Pressable>
 
@@ -281,13 +304,18 @@ export default function ItemDetailScreen() {
         )}
       >
         <BottomSheetView style={styles.sheetContent}>
-          <ThemedText type="title" style={styles.sheetTitle}>Delete Item</ThemedText>
+          <ThemedText type='title' style={styles.sheetTitle}>
+            Delete Item
+          </ThemedText>
           <ThemedText style={[styles.sheetSubtitle, { color: secondaryText }]}>
             Are you sure you want to remove this item from your closet? This cannot be undone.
           </ThemedText>
           <View style={styles.sheetActions}>
-            <Pressable 
-              style={[styles.sheetButton, { backgroundColor: cardColor, borderWidth: 1, borderColor: secondaryText }]} 
+            <Pressable
+              style={[
+                styles.sheetButton,
+                { backgroundColor: cardColor, borderWidth: 1, borderColor: secondaryText },
+              ]}
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 handleCloseModalPress();
@@ -295,8 +323,8 @@ export default function ItemDetailScreen() {
             >
               <ThemedText style={styles.sheetButtonText}>Cancel</ThemedText>
             </Pressable>
-            <Pressable 
-              style={[styles.sheetButton, { backgroundColor: errorColor }]} 
+            <Pressable
+              style={[styles.sheetButton, { backgroundColor: errorColor }]}
               onPress={handleConfirmDelete}
             >
               <ThemedText style={[styles.sheetButtonText, { color: '#FFF' }]}>Delete</ThemedText>
@@ -327,7 +355,6 @@ const styles = StyleSheet.create({
   heroImage: {
     width: '100%',
     height: '100%',
-    resizeMode: 'cover',
   },
   backButton: {
     position: 'absolute',

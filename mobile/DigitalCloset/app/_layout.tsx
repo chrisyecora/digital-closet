@@ -78,9 +78,9 @@ export default function RootLayout() {
   };
 
   return (
-    <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
-      <ClerkLoaded>
-        <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
+        <ClerkLoaded>
           <KeyboardProvider>
             <BottomSheetModalProvider>
               <SafeAreaProvider>
@@ -93,8 +93,8 @@ export default function RootLayout() {
               </SafeAreaProvider>
             </BottomSheetModalProvider>
           </KeyboardProvider>
-        </GestureHandlerRootView>
-      </ClerkLoaded>
-    </ClerkProvider>
+        </ClerkLoaded>
+      </ClerkProvider>
+    </GestureHandlerRootView>
   );
 }

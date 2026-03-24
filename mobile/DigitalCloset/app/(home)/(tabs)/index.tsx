@@ -16,7 +16,7 @@ export default function HomeDashboard() {
         </View>
         
         <View style={styles.content}>
-          <ThemedText style={{ color: secondaryText, textAlign: 'center' }}>
+          <ThemedText style={[styles.emptyText, { color: secondaryText }]}>
             Take your first outfit photo to get started.
           </ThemedText>
         </View>
@@ -42,5 +42,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 40,
+  },
+  emptyText: {
+    textAlign: 'center',
   },
 });
