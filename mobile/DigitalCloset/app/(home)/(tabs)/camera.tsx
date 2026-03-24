@@ -14,8 +14,10 @@ import { useIsFocused } from '@react-navigation/native';
 import Animated, { 
   useSharedValue, 
   useAnimatedStyle, 
-  withTiming
+  withTiming,
+  withSequence
 } from 'react-native-reanimated';
+import LottieView from 'lottie-react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -30,6 +32,7 @@ export default function CameraScreen() {
   const [photo, setPhoto] = useState<PhotoFile | { uri: string } | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
   const cameraRef = useRef<Camera>(null);
+  const confettiRef = useRef<LottieView>(null);
 
   // Animation values
   const imageWidth = useSharedValue(windowWidth);
@@ -39,6 +42,7 @@ export default function CameraScreen() {
   const imageBorderRadius = useSharedValue(0);
   const imageOpacity = useSharedValue(1);
   const overlayOpacity = useSharedValue(1);
+  const successOverlayOpacity = useSharedValue(0);
 
   // Explicitly select the physical wide-angle camera (1x)
   const device = useCameraDevice('back', {
@@ -109,25 +113,23 @@ export default function CameraScreen() {
       const targetTop = windowHeight - 90; // Approximate offset for bottom tab bar
       
       overlayOpacity.value = withTiming(0, { duration: 200 });
+      successOverlayOpacity.value = withTiming(1, { duration: 300 });
+
+      // Trigger confetti
+      confettiRef.current?.play();
 
       // Animate the image shrinking down into the tab bar camera icon
-      imageWidth.value = withTiming(targetWidth, { duration: 500 });
-      imageHeight.value = withTiming(targetHeight, { duration: 500 });
-      imageTop.value = withTiming(targetTop, { duration: 500 });
-      imageLeft.value = withTiming(targetLeft, { duration: 500 });
-      imageBorderRadius.value = withTiming(targetWidth / 2, { duration: 500 });
-      imageOpacity.value = withTiming(0, { duration: 600 });
-      
-      // Simulate upload delay
-      setTimeout(() => {
-        Alert.alert(
-          "Item Uploaded!",
-          "Your item has been uploaded and will be processed by the ML engine.",
-          [{ text: "OK", onPress: () => router.navigate('/(home)/(tabs)/closet') }]
-        );
-      }, 1500);
+      imageWidth.value = withTiming(targetWidth, { duration: 600 });
+      imageHeight.value = withTiming(targetHeight, { duration: 600 });
+      imageTop.value = withTiming(targetTop, { duration: 600 });
+      imageLeft.value = withTiming(targetLeft, { duration: 600 });
+      imageBorderRadius.value = withTiming(targetWidth / 2, { duration: 600 });
+      imageOpacity.value = withSequence(
+        withTiming(1, { duration: 400 }), // Keep opaque during most of the transition
+        withTiming(0, { duration: 200 })  // Fade out right at the end
+      );
 
-      // Once the animation concludes, reset the state and navigate home
+      // Once the animation and confetti conclude, reset the state and navigate home
       setTimeout(() => {
         setPhoto(null);
         setIsAnimating(false);
@@ -139,9 +141,10 @@ export default function CameraScreen() {
         imageBorderRadius.value = 0;
         imageOpacity.value = 1;
         overlayOpacity.value = 1;
+        successOverlayOpacity.value = 0;
         
         router.navigate('/');
-      }, 600);
+      }, 5000);
       
     } else {
       setPhoto(null);
@@ -169,6 +172,13 @@ export default function CameraScreen() {
   const animatedOverlayStyle = useAnimatedStyle(() => {
     return {
       opacity: overlayOpacity.value,
+    };
+  });
+
+  const animatedSuccessOverlayStyle = useAnimatedStyle(() => {
+    return {
+      opacity: successOverlayOpacity.value,
+      zIndex: 10,
     };
   });
 
@@ -245,6 +255,32 @@ export default function CameraScreen() {
               </Pressable>
             </View>
           </SafeAreaView>
+        </Animated.View>
+
+        {/* Success Overlay with Confetti */}
+        <Animated.View 
+          style={[styles.absoluteFillObject, styles.successOverlay, animatedSuccessOverlayStyle]} 
+          pointerEvents="none"
+        >
+          <LottieView
+            ref={confettiRef}
+            source={require('@/assets/animations/confetti.json')}
+            autoPlay={false}
+            loop={false}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              zIndex: 999,
+              pointerEvents: 'none',
+            }}
+          />
+          <View style={styles.successMessageContainer}>
+            <ThemedText style={styles.successMessageTitle}>Submitted! 🎉</ThemedText>
+            <ThemedText style={styles.successMessageBody}>Our AI is working its magic to identify and catalog your item!</ThemedText>
+          </View>
         </Animated.View>
       </View>
     );
@@ -434,4 +470,29 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
+  successOverlay: {
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  successMessageContainer: {
+    padding: 30,
+    borderRadius: 16,
+    alignItems: 'center',
+    zIndex: 20,
+  },
+  successMessageTitle: {
+    color: '#fff',
+    fontSize: 28,
+    fontWeight: 'bold',
+    marginBottom: 8,
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: -1, height: 1 },
+    textShadowRadius: 10
+  },
+  successMessageBody: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 18,
+    fontWeight: '500',
+  }
 });
