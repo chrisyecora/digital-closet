@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { StyleSheet, View, Pressable, Linking, Alert, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { BlurView } from 'expo-blur';
 import {
   Camera,
   useCameraDevice,
@@ -107,17 +108,13 @@ export default function CameraScreen() {
   const usePhoto = () => {
     if (photo) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      const uri = 'path' in photo ? `file://${photo.path}` : photo.uri;
-      console.log('Using photo:', uri);
-
       setIsAnimating(true);
 
       // Target values for the camera tab icon (approximate position)
-      // The camera icon is usually centered horizontally at the bottom
       const targetWidth = 56;
       const targetHeight = 56;
       const targetLeft = windowWidth / 2 - targetWidth / 2;
-      const targetTop = windowHeight - 90; // Approximate offset for bottom tab bar
+      const targetTop = windowHeight - 90;
 
       overlayOpacity.value = withTiming(0, { duration: 200 });
       successOverlayOpacity.value = withTiming(1, { duration: 300 });
@@ -140,8 +137,8 @@ export default function CameraScreen() {
       imageLeft.value = withTiming(targetLeft, { duration: 600 });
       imageBorderRadius.value = withTiming(targetWidth / 2, { duration: 600 });
       imageOpacity.value = withSequence(
-        withTiming(1, { duration: 400 }), // Keep opaque during most of the transition
-        withTiming(0, { duration: 200 }), // Fade out right at the end
+        withTiming(1, { duration: 400 }), 
+        withTiming(0, { duration: 200 }),
       );
 
       // Once the animation and confetti conclude, reset the state and navigate home
@@ -158,11 +155,11 @@ export default function CameraScreen() {
         overlayOpacity.value = 1;
         successOverlayOpacity.value = 0;
 
-        router.navigate('/');
+        router.replace('/');
       }, 3000);
     } else {
       setPhoto(null);
-      router.navigate('/');
+      router.replace('/');
     }
   };
 
@@ -242,74 +239,6 @@ export default function CameraScreen() {
     );
   }
 
-  if (photo) {
-    const photoUri = 'path' in photo ? `file://${photo.path}` : photo.uri;
-    return (
-      <View style={styles.container}>
-        <AnimatedImage
-          source={{ uri: photoUri }}
-          style={[styles.absoluteFillObject, animatedImageStyle]}
-        />
-        <Animated.View
-          style={[StyleSheet.absoluteFillObject, animatedOverlayStyle]}
-          pointerEvents='box-none'
-        >
-          <SafeAreaView style={styles.overlayContainer} edges={['top', 'bottom']}>
-            <View style={styles.previewTopBar}>
-              <Pressable onPress={retakePhoto} style={styles.iconButton}>
-                <Ionicons name='close' size={28} color='#fff' />
-              </Pressable>
-            </View>
-
-            <View style={styles.previewBottomBar}>
-              <Pressable style={styles.retakeButton} onPress={retakePhoto}>
-                <ThemedText style={styles.retakeButtonText}>Retake</ThemedText>
-              </Pressable>
-
-              <Pressable
-                style={[styles.usePhotoButton, { backgroundColor: primaryColor }]}
-                onPress={usePhoto}
-                disabled={isAnimating}
-              >
-                <ThemedText style={styles.usePhotoText}>Use Photo</ThemedText>
-                <Ionicons name='checkmark' size={20} color='#fff' style={{ marginLeft: 8 }} />
-              </Pressable>
-            </View>
-          </SafeAreaView>
-        </Animated.View>
-
-        {/* Success Overlay with Confetti */}
-        <Animated.View
-          style={[styles.absoluteFillObject, styles.successOverlay, animatedSuccessOverlayStyle]}
-          pointerEvents='none'
-        >
-          <LottieView
-            ref={confettiRef}
-            source={require('@/assets/animations/confetti.json')}
-            autoPlay={false}
-            loop={false}
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              zIndex: 999,
-              pointerEvents: 'none',
-            }}
-          />
-          <View style={styles.successMessageContainer}>
-            <ThemedText style={styles.successMessageEmoji}>🎉</ThemedText>
-            <ThemedText style={styles.successMessageTitle}>Submitted!</ThemedText>
-            <ThemedText style={styles.successMessageBody}>
-              Our AI is working its magic to identify and catalog your fit!
-            </ThemedText>
-          </View>
-        </Animated.View>
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
       <Camera
@@ -318,39 +247,100 @@ export default function CameraScreen() {
         device={device}
         isActive={isFocused}
         photo={true}
-        photoQualityBalance="speed"
+        photoQualityBalance='speed'
       />
-      <SafeAreaView
-        style={[styles.overlayContainer, StyleSheet.absoluteFillObject]}
-        edges={['top', 'bottom']}
-        pointerEvents='box-none'
-      >
-        <View style={styles.cameraTopBar}>
-          <Pressable
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.navigate('/');
-            }}
-            style={styles.iconButton}
+
+      {photo && (
+        <View style={StyleSheet.absoluteFill}>
+          <AnimatedImage
+            source={{ uri: 'path' in photo ? `file://${photo.path}` : photo.uri }}
+            style={[styles.absoluteFillObject, animatedImageStyle]}
+          />
+          <Animated.View
+            style={[StyleSheet.absoluteFillObject, animatedOverlayStyle]}
+            pointerEvents='box-none'
           >
-            <Ionicons name='close' size={28} color='#fff' />
-          </Pressable>
-          <ThemedText style={styles.helperText}>Take a photo of your outfit today</ThemedText>
-          <View style={{ width: 44 }} />
+            <SafeAreaView style={styles.overlayContainer} edges={['top', 'bottom']}>
+              <View style={styles.previewTopBar}>
+                <Pressable onPress={retakePhoto} style={styles.iconButton}>
+                  <Ionicons name='close' size={28} color='#fff' />
+                </Pressable>
+              </View>
+
+              <View style={styles.previewBottomBar}>
+                <Pressable style={styles.retakeButton} onPress={retakePhoto}>
+                  <ThemedText style={styles.retakeButtonText}>Retake</ThemedText>
+                </Pressable>
+
+                <Pressable
+                  style={[styles.usePhotoButton, { backgroundColor: primaryColor }]}
+                  onPress={usePhoto}
+                  disabled={isAnimating}
+                >
+                  <ThemedText style={styles.usePhotoText}>Use Photo</ThemedText>
+                  <Ionicons name='checkmark' size={20} color='#fff' style={{ marginLeft: 8 }} />
+                </Pressable>
+              </View>
+            </SafeAreaView>
+          </Animated.View>
+
+          {/* Success Overlay with Confetti */}
+          <Animated.View
+            style={[styles.absoluteFillObject, styles.successOverlay, animatedSuccessOverlayStyle]}
+            pointerEvents='none'
+          >
+            <BlurView intensity={20} tint='extraLight' style={StyleSheet.absoluteFill} />
+            <LottieView
+              ref={confettiRef}
+              source={require('@/assets/animations/confetti.json')}
+              autoPlay={false}
+              loop={false}
+              style={styles.confetti}
+            />
+            <View style={styles.successMessageContainer}>
+              <ThemedText style={styles.successMessageEmoji}>🎉</ThemedText>
+              <ThemedText style={styles.successMessageTitle}>Submitted!</ThemedText>
+              <ThemedText style={styles.successMessageBody}>
+                Our AI is working its magic to identify and catalog your fit!
+              </ThemedText>
+            </View>
+          </Animated.View>
         </View>
+      )}
 
-        <View style={styles.cameraBottomBar}>
-          <Pressable style={styles.libraryButton} onPress={pickImage}>
-            <Ionicons name='images-outline' size={28} color='#fff' />
-          </Pressable>
+      {!photo && (
+        <SafeAreaView
+          style={[styles.overlayContainer, StyleSheet.absoluteFillObject]}
+          edges={['top', 'bottom']}
+          pointerEvents='box-none'
+        >
+          <View style={styles.cameraTopBar}>
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.replace('/');
+              }}
+              style={styles.iconButton}
+            >
+              <Ionicons name='close' size={28} color='#fff' />
+            </Pressable>
+            <ThemedText style={styles.helperText}>Take a photo of your outfit today</ThemedText>
+            <View style={{ width: 44 }} />
+          </View>
 
-          <Pressable style={styles.captureButtonContainer} onPress={takePicture}>
-            <View style={styles.captureButtonInner} />
-          </Pressable>
+          <View style={styles.cameraBottomBar}>
+            <Pressable style={styles.libraryButton} onPress={pickImage}>
+              <Ionicons name='images-outline' size={28} color='#fff' />
+            </Pressable>
 
-          <View style={{ width: 44 }} />
-        </View>
-      </SafeAreaView>
+            <Pressable style={styles.captureButtonContainer} onPress={takePicture}>
+              <View style={styles.captureButtonInner} />
+            </Pressable>
+
+            <View style={{ width: 44 }} />
+          </View>
+        </SafeAreaView>
+      )}
     </View>
   );
 }
@@ -504,10 +494,19 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   successOverlay: {
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'center',
     alignItems: 'center',
     paddingTop: 40,
+  },
+  confetti: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 999,
+    pointerEvents: 'none',
   },
   successMessageContainer: {
     padding: 30,
@@ -533,12 +532,13 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: -1, height: 1 },
     textShadowRadius: 10,
     paddingTop: 10,
+    backgroundColor: 'transparent',
   },
   successMessageBody: {
     color: 'rgba(255,255,255,0.9)',
     fontSize: 18,
     fontWeight: '500',
     textAlign: 'center',
-    maxWidth: 300
+    maxWidth: 300,
   },
 });
