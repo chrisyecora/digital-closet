@@ -6,8 +6,8 @@ import { Pressable, StyleSheet, TextInput, View, ActivityIndicator, Platform } f
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { Ionicons } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
-// import * as Camera from 'expo-camera';
 import * as Notifications from 'expo-notifications';
+import * as Haptics from 'expo-haptics';
 
 interface AuthFormProps {
   isSignIn: boolean;
@@ -39,7 +39,7 @@ export function AuthForm({ isSignIn }: AuthFormProps) {
   // Auto-focus logic
   useEffect(() => {
     const isVerifying = isSignIn
-      ? signIn?.status === 'needs_client_trust'
+      ? signIn?.status === 'needs_client_trust' || signIn?.status === 'needs_second_factor'
       : signUp?.status === 'missing_requirements' &&
         signUp?.unverifiedFields.includes('email_address');
 
@@ -92,6 +92,7 @@ export function AuthForm({ isSignIn }: AuthFormProps) {
     setIsLoading(true);
     setError(null);
     try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       const startFlow = strategy === 'google' ? startGoogleOAuthFlow : startAppleOAuthFlow;
       const { createdSessionId } = await startFlow();
 
@@ -118,20 +119,24 @@ export function AuthForm({ isSignIn }: AuthFormProps) {
       });
 
       if (signInError) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         setError(signInError.message);
         return;
       }
 
       if (signIn.status === 'complete') {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         if (signIn.createdSessionId) await onAuthSuccess(signIn.createdSessionId);
-      } else if (signIn.status === 'needs_second_factor') {
+      } else if (signIn.status === 'needs_second_factor' || signIn.status === 'needs_client_trust') {
         const { error: sendError } = await signIn.mfa.sendEmailCode();
         if (sendError) {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
           setError(sendError.message);
           return;
         }
       }
     } catch (err: any) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       console.error(JSON.stringify(err, null, 2));
       setError('An unexpected error occurred');
     } finally {
@@ -149,14 +154,17 @@ export function AuthForm({ isSignIn }: AuthFormProps) {
       });
 
       if (verifyError) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         setError(verifyError.message);
         return;
       }
 
       if (signIn.status === 'complete') {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         if (signIn.createdSessionId) await onAuthSuccess(signIn.createdSessionId);
       }
     } catch (err: any) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       console.error(JSON.stringify(err, null, 2));
       setError('An unexpected error occurred');
     } finally {
@@ -176,16 +184,19 @@ export function AuthForm({ isSignIn }: AuthFormProps) {
       });
 
       if (signUpError) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         setError(signUpError.message);
         return;
       }
 
       const { error: sendError } = await signUp.verifications.sendEmailCode();
       if (sendError) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         setError(sendError.message);
         return;
       }
     } catch (err: any) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       console.error(JSON.stringify(err, null, 2));
       setError('An unexpected error occurred');
     } finally {
@@ -203,14 +214,17 @@ export function AuthForm({ isSignIn }: AuthFormProps) {
       });
 
       if (verifyError) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         setError(verifyError.message);
         return;
       }
 
       if (signUp.status === 'complete') {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         if (signUp.createdSessionId) await onAuthSuccess(signUp.createdSessionId);
       }
     } catch (err: any) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       console.error(JSON.stringify(err, null, 2));
       setError('An unexpected error occurred');
     } finally {
@@ -218,9 +232,24 @@ export function AuthForm({ isSignIn }: AuthFormProps) {
     }
   };
 
-  const handleSubmit = isSignIn ? handleSignIn : handleSignUp;
-  const handleVerify = isSignIn ? handleSignInVerify : handleSignUpVerify;
+  const handleSubmit = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (isSignIn) {
+      handleSignIn();
+    } else {
+      handleSignUp();
+    }
+  };
+  const handleVerify = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (isSignIn) {
+      handleSignInVerify();
+    } else {
+      handleSignUpVerify();
+    }
+  };
   const handleResend = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setError(null);
     try {
       if (isSignIn) {
@@ -236,7 +265,7 @@ export function AuthForm({ isSignIn }: AuthFormProps) {
   };
 
   const isVerifying = isSignIn
-    ? signIn?.status === 'needs_client_trust'
+    ? signIn?.status === 'needs_client_trust' || signIn?.status === 'needs_second_factor'
     : signUp?.status === 'missing_requirements' &&
       signUp?.unverifiedFields.includes('email_address');
 

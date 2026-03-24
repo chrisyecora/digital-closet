@@ -9,6 +9,9 @@ import { StatusBar } from 'expo-status-bar';
 import * as SystemUI from 'expo-system-ui';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 
 // Handle OAuth redirects
 WebBrowser.maybeCompleteAuthSession();
@@ -40,7 +43,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
         router.replace('/');
       }
     }
-  }, [isSignedIn, isLoaded, segments]);
+  }, [isSignedIn, isLoaded, segments, router]);
 
   if (!isLoaded) return null;
 
@@ -77,14 +80,20 @@ export default function RootLayout() {
   return (
     <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
       <ClerkLoaded>
-        <SafeAreaProvider>
-          <ThemeProvider value={colorScheme === 'dark' ? customDarkTheme : customLightTheme}>
-            <AuthGuard>
-              <Slot />
-            </AuthGuard>
-            <StatusBar style="auto" />
-          </ThemeProvider>
-        </SafeAreaProvider>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <KeyboardProvider>
+            <BottomSheetModalProvider>
+              <SafeAreaProvider>
+                <ThemeProvider value={colorScheme === 'dark' ? customDarkTheme : customLightTheme}>
+                  <AuthGuard>
+                    <Slot />
+                  </AuthGuard>
+                  <StatusBar style="auto" />
+                </ThemeProvider>
+              </SafeAreaProvider>
+            </BottomSheetModalProvider>
+          </KeyboardProvider>
+        </GestureHandlerRootView>
       </ClerkLoaded>
     </ClerkProvider>
   );

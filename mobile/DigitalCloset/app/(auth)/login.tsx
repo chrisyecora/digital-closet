@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { StyleSheet, Pressable, View, ScrollView, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard } from 'react-native';
+import { StyleSheet, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { AuthForm } from '@/components/AuthForm';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { Stack } from 'expo-router';
+import * as Haptics from 'expo-haptics';
 
 export default function AuthHub() {
   const [isSignIn, setIsSignIn] = useState(true);
@@ -18,25 +20,24 @@ export default function AuthHub() {
     <ThemedView style={styles.container}>
       <Stack.Screen options={{ title: 'Authentication', headerShown: false }} />
       <SafeAreaView style={styles.safeArea}>
-        <KeyboardAvoidingView 
-          style={styles.keyboardAvoidingView} 
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        <KeyboardAwareScrollView 
+          style={styles.keyboardAvoidingView}
+          contentContainerStyle={styles.scrollContent}
+          bounces={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
         >
-          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-            <ScrollView 
-              contentContainerStyle={styles.scrollContent} 
-              bounces={false}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="on-drag"
-            >
-              <View style={styles.header}>
-                <ThemedText type="title" style={styles.mainTitle}>Digital Closet</ThemedText>
-                <ThemedText style={[styles.subtitle, { color: secondaryText }]}>Your style, organized.</ThemedText>
-              </View>
+          <View style={styles.header}>
+            <ThemedText type="title" style={styles.mainTitle}>Digital Closet</ThemedText>
+            <ThemedText style={[styles.subtitle, { color: secondaryText }]}>Your style, organized.</ThemedText>
+          </View>
 
               <View style={styles.tabContainer}>
                 <Pressable
-                  onPress={() => setIsSignIn(true)}
+                  onPress={() => {
+                    if (!isSignIn) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setIsSignIn(true);
+                  }}
                   style={[
                     styles.tab,
                     { borderBottomColor: isSignIn ? primaryColor : alternateColor }
@@ -52,7 +53,10 @@ export default function AuthHub() {
                   </ThemedText>
                 </Pressable>
                 <Pressable
-                  onPress={() => setIsSignIn(false)}
+                  onPress={() => {
+                    if (isSignIn) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setIsSignIn(false);
+                  }}
                   style={[
                     styles.tab,
                     { borderBottomColor: !isSignIn ? primaryColor : alternateColor }
@@ -69,12 +73,10 @@ export default function AuthHub() {
                 </Pressable>
               </View>
 
-              <View style={styles.formWrapper}>
-                <AuthForm isSignIn={isSignIn} />
-              </View>
-            </ScrollView>
-          </TouchableWithoutFeedback>
-        </KeyboardAvoidingView>
+          <View style={styles.formWrapper}>
+            <AuthForm isSignIn={isSignIn} />
+          </View>
+        </KeyboardAwareScrollView>
       </SafeAreaView>
     </ThemedView>
   );

@@ -1,8 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Image, ScrollView, Pressable, TextInput, Alert } from 'react-native';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { StyleSheet, View, ScrollView, Pressable, TextInput } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Image } from 'expo-image';
+import * as Haptics from 'expo-haptics';
+import { BottomSheetModal, BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
 
 import { ThemedText } from '@/components/themed-text';
 import { useThemeColor } from '@/hooks/use-theme-color';
@@ -31,6 +34,19 @@ export default function ItemDetailScreen() {
   const isDarkMode = backgroundColor === '#1A1918'; // based on theme.ts dark bg
   const skeletonColor = isDarkMode ? SKELETON_BG_DARK : SKELETON_BG_LIGHT;
 
+  // Bottom Sheet Ref
+  const bottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const snapPoints = useMemo(() => ['25%'], []);
+
+  const handlePresentModalPress = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    bottomSheetModalRef.current?.present();
+  }, []);
+
+  const handleCloseModalPress = useCallback(() => {
+    bottomSheetModalRef.current?.dismiss();
+  }, []);
+
   useEffect(() => {
     // Simulate API fetch
     const fetchItem = async () => {
@@ -49,6 +65,7 @@ export default function ItemDetailScreen() {
   }, [id]);
 
   const handleGoBack = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (router.canGoBack()) {
       router.back();
     } else {
@@ -56,22 +73,13 @@ export default function ItemDetailScreen() {
     }
   };
 
-  const handleDelete = () => {
-    Alert.alert(
-      "Delete Item",
-      "Are you sure you want to remove this item from your closet?",
-      [
-        { text: "Cancel", style: "cancel" },
-        { 
-          text: "Delete", 
-          style: "destructive", 
-          onPress: () => {
-            // In a real app, delete API call here
-            router.back();
-          }
-        }
-      ]
-    );
+  const handleConfirmDelete = () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    handleCloseModalPress();
+    // In a real app, delete API call here
+    setTimeout(() => {
+      router.back();
+    }, 300);
   };
 
   const formatDate = (isoString: string) => {
@@ -209,7 +217,10 @@ export default function ItemDetailScreen() {
                   <Pressable 
                     key={relatedItem.id} 
                     style={styles.relatedItem}
-                    onPress={() => router.push(`/(home)/items/${relatedItem.id}`)}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      router.push(`/(home)/items/${relatedItem.id}`);
+                    }}
                   >
                     <Image source={{ uri: relatedItem.imageUrl }} style={styles.relatedImage} />
                     <ThemedText numberOfLines={1} style={styles.relatedName}>
@@ -229,11 +240,14 @@ export default function ItemDetailScreen() {
 
           {/* Action Buttons */}
           <View style={styles.actionsContainer}>
-            <Pressable style={[styles.editButton, { backgroundColor: primaryColor }]}>
+            <Pressable 
+              style={[styles.editButton, { backgroundColor: primaryColor }]}
+              onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+            >
               <ThemedText style={styles.editButtonText}>Edit Details</ThemedText>
             </Pressable>
             
-            <Pressable style={styles.deleteButton} onPress={handleDelete}>
+            <Pressable style={styles.deleteButton} onPress={handlePresentModalPress}>
               <ThemedText style={[styles.deleteButtonText, { color: errorColor }]}>
                 Delete Item
               </ThemedText>
@@ -255,6 +269,41 @@ export default function ItemDetailScreen() {
           <Ionicons name="chevron-back" size={24} color="#FFF" />
         </View>
       </Pressable>
+
+      <BottomSheetModal
+        ref={bottomSheetModalRef}
+        index={0}
+        snapPoints={snapPoints}
+        backgroundStyle={{ backgroundColor: cardColor }}
+        handleIndicatorStyle={{ backgroundColor: secondaryText }}
+        backdropComponent={(props) => (
+          <BottomSheetBackdrop {...props} disappearsOnIndex={-1} appearsOnIndex={0} />
+        )}
+      >
+        <BottomSheetView style={styles.sheetContent}>
+          <ThemedText type="title" style={styles.sheetTitle}>Delete Item</ThemedText>
+          <ThemedText style={[styles.sheetSubtitle, { color: secondaryText }]}>
+            Are you sure you want to remove this item from your closet? This cannot be undone.
+          </ThemedText>
+          <View style={styles.sheetActions}>
+            <Pressable 
+              style={[styles.sheetButton, { backgroundColor: cardColor, borderWidth: 1, borderColor: secondaryText }]} 
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                handleCloseModalPress();
+              }}
+            >
+              <ThemedText style={styles.sheetButtonText}>Cancel</ThemedText>
+            </Pressable>
+            <Pressable 
+              style={[styles.sheetButton, { backgroundColor: errorColor }]} 
+              onPress={handleConfirmDelete}
+            >
+              <ThemedText style={[styles.sheetButtonText, { color: '#FFF' }]}>Delete</ThemedText>
+            </Pressable>
+          </View>
+        </BottomSheetView>
+      </BottomSheetModal>
     </View>
   );
 }
@@ -443,5 +492,35 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 160,
     borderRadius: 12,
+  },
+  sheetContent: {
+    flex: 1,
+    padding: 24,
+    alignItems: 'center',
+  },
+  sheetTitle: {
+    marginBottom: 12,
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  sheetSubtitle: {
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  sheetActions: {
+    flexDirection: 'row',
+    gap: 16,
+    width: '100%',
+  },
+  sheetButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  sheetButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

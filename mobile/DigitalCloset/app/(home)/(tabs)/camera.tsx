@@ -18,10 +18,14 @@ import Animated, {
   withSequence
 } from 'react-native-reanimated';
 import LottieView from 'lottie-react-native';
+import { Image } from 'expo-image';
+import * as Haptics from 'expo-haptics';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useThemeColor } from '@/hooks/use-theme-color';
+
+const AnimatedImage = Animated.createAnimatedComponent(Image);
 
 const { width: windowWidth, height: windowHeight } = Dimensions.get('window');
 
@@ -54,6 +58,7 @@ export default function CameraScreen() {
   const takePicture = async () => {
     if (cameraRef.current) {
       try {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         const photoData = await cameraRef.current.takePhoto({
           flash: 'off',
           enableShutterSound: true,
@@ -66,6 +71,7 @@ export default function CameraScreen() {
   };
 
   const pickImage = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     let currentPermission = await ImagePicker.getMediaLibraryPermissionsAsync();
 
     if (currentPermission.status === 'denied' && !currentPermission.canAskAgain) {
@@ -100,6 +106,7 @@ export default function CameraScreen() {
 
   const usePhoto = () => {
     if (photo) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       const uri = 'path' in photo ? `file://${photo.path}` : photo.uri;
       console.log('Using photo:', uri);
       
@@ -153,6 +160,7 @@ export default function CameraScreen() {
   };
 
   const retakePhoto = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setPhoto(null);
   };
 
@@ -196,6 +204,7 @@ export default function CameraScreen() {
         <Pressable 
           style={[styles.primaryButton, { backgroundColor: primaryColor }]}
           onPress={async () => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             const granted = await requestPermission();
             if (!granted) {
               Linking.openSettings();
@@ -209,7 +218,10 @@ export default function CameraScreen() {
         
         <Pressable 
           style={styles.secondaryButton}
-          onPress={() => router.navigate('/')}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            router.navigate('/');
+          }}
         >
           <ThemedText style={[styles.secondaryButtonText, { color: primaryColor }]}>
             Not Now
@@ -231,7 +243,7 @@ export default function CameraScreen() {
     const photoUri = 'path' in photo ? `file://${photo.path}` : photo.uri;
     return (
       <View style={styles.container}>
-        <Animated.Image source={{ uri: photoUri }} style={[styles.absoluteFillObject, animatedImageStyle]} />
+        <AnimatedImage source={{ uri: photoUri }} style={[styles.absoluteFillObject, animatedImageStyle]} />
         <Animated.View style={[StyleSheet.absoluteFillObject, animatedOverlayStyle]} pointerEvents="box-none">
           <SafeAreaView style={styles.overlayContainer} edges={['top', 'bottom']}>
             <View style={styles.previewTopBar}>
@@ -297,7 +309,13 @@ export default function CameraScreen() {
       />
       <SafeAreaView style={[styles.overlayContainer, StyleSheet.absoluteFillObject]} edges={['top', 'bottom']} pointerEvents="box-none">
         <View style={styles.cameraTopBar}>
-          <Pressable onPress={() => router.navigate('/')} style={styles.iconButton}>
+          <Pressable 
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.navigate('/');
+            }} 
+            style={styles.iconButton}
+          >
             <Ionicons name="close" size={28} color="#fff" />
           </Pressable>
           <ThemedText style={styles.helperText}>

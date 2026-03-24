@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import * as Haptics from 'expo-haptics';
 
 export default function WelcomeScreen() {
   const router = useRouter();
@@ -67,7 +68,10 @@ export default function WelcomeScreen() {
         <View style={styles.footerContainer}>
           <TouchableOpacity
             style={[styles.button, { backgroundColor: primaryColor }]}
-            onPress={() => router.push('/(auth)/login')}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.push('/(auth)/login');
+            }}
             activeOpacity={0.8}
           >
             <ThemedText style={[styles.buttonText, { color: buttonTextColor }]}>

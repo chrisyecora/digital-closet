@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router';
 // import * as Camera from 'expo-camera';
 import * as Notifications from 'expo-notifications';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 
 export default function PermissionsScreen() {
   const router = useRouter();
@@ -20,6 +21,7 @@ export default function PermissionsScreen() {
   const alternateColor = useThemeColor({}, 'alternate');
 
   const requestPermissions = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setLoading(true);
     try {
       // const { status: camStatus } = await Camera.Camera.requestCameraPermissionsAsync();

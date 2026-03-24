@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Pressable, Image, ScrollView } from 'react-native';
+import { StyleSheet, View, Pressable, ScrollView } from 'react-native';
 import { useAuth } from '@clerk/expo';
 import { useRouter } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Image } from 'expo-image';
+import * as Haptics from 'expo-haptics';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -38,9 +40,16 @@ export default function Dashboard() {
   const renderItem = ({ item }: { item: ClosetItem }) => (
     <Pressable 
       style={styles.card}
-      onPress={() => router.push(`/(home)/items/${item.id}`)}
+      onPress={() => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        router.push(`/(home)/items/${item.id}`);
+      }}
     >
-      <Image source={{ uri: item.imageUrl }} style={styles.cardImage} />
+      <Image 
+        source={{ uri: item.imageUrl }} 
+        style={styles.cardImage} 
+        transition={200}
+      />
       {item.isDormant && (
         <View style={[styles.dormantBadge, { backgroundColor: errorColor }]}>
           <ThemedText style={styles.dormantText}>Dormant</ThemedText>
@@ -74,7 +83,10 @@ export default function Dashboard() {
       </ThemedText>
       <Pressable 
         style={[styles.addButton, { backgroundColor: primaryColor }]}
-        onPress={() => router.push('/(home)/(tabs)/camera')}
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          router.push('/(home)/(tabs)/camera');
+        }}
       >
         <Ionicons name="camera" size={20} color="#fff" style={styles.addButtonIcon} />
         <ThemedText style={styles.addButtonText}>Snap First Outfit</ThemedText>
@@ -92,7 +104,13 @@ export default function Dashboard() {
               {mockItems.length} items
             </ThemedText>
           </View>
-          <Pressable onPress={() => signOut()} style={styles.profileButton}>
+          <Pressable 
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              signOut();
+            }} 
+            style={styles.profileButton}
+          >
             <Ionicons name="person-circle-outline" size={32} color={primaryColor} />
           </Pressable>
         </View>
@@ -114,7 +132,10 @@ export default function Dashboard() {
                       borderColor: selectedCategory === cat.value ? primaryColor : alternateColor,
                     }
                   ]}
-                  onPress={() => setSelectedCategory(cat.value)}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setSelectedCategory(cat.value);
+                  }}
                 >
                   <ThemedText 
                     style={[
@@ -153,7 +174,10 @@ export default function Dashboard() {
         {mockItems.length > 0 && (
           <Pressable 
             style={[styles.fab, { backgroundColor: primaryColor }]}
-            onPress={() => router.push('/(home)/(tabs)/camera')}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.push('/(home)/(tabs)/camera');
+            }}
             accessibilityLabel="Add item"
           >
             <Ionicons name="add" size={32} color="#fff" />
