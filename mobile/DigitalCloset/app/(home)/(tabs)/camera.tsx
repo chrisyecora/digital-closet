@@ -1,21 +1,21 @@
 import React, { useRef, useState } from 'react';
 import { StyleSheet, View, Pressable, Linking, Alert, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { 
-  Camera, 
-  useCameraDevice, 
-  useCameraPermission, 
-  PhotoFile
+import {
+  Camera,
+  useCameraDevice,
+  useCameraPermission,
+  PhotoFile,
 } from 'react-native-vision-camera';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
-import Animated, { 
-  useSharedValue, 
-  useAnimatedStyle, 
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
   withTiming,
-  withSequence
+  withSequence,
 } from 'react-native-reanimated';
 import LottieView from 'lottie-react-native';
 import { Image } from 'expo-image';
@@ -50,7 +50,7 @@ export default function CameraScreen() {
 
   // Explicitly select the physical wide-angle camera (1x)
   const device = useCameraDevice('back', {
-    physicalDevices: ['wide-angle-camera']
+    physicalDevices: ['wide-angle-camera'],
   });
 
   const primaryColor = useThemeColor({}, 'primary');
@@ -81,7 +81,7 @@ export default function CameraScreen() {
         [
           { text: 'Cancel', style: 'cancel' },
           { text: 'Open Settings', onPress: () => Linking.openSettings() },
-        ]
+        ],
       );
       return;
     }
@@ -109,21 +109,29 @@ export default function CameraScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       const uri = 'path' in photo ? `file://${photo.path}` : photo.uri;
       console.log('Using photo:', uri);
-      
+
       setIsAnimating(true);
-      
+
       // Target values for the camera tab icon (approximate position)
       // The camera icon is usually centered horizontally at the bottom
       const targetWidth = 56;
       const targetHeight = 56;
-      const targetLeft = (windowWidth / 2) - (targetWidth / 2);
+      const targetLeft = windowWidth / 2 - targetWidth / 2;
       const targetTop = windowHeight - 90; // Approximate offset for bottom tab bar
-      
+
       overlayOpacity.value = withTiming(0, { duration: 200 });
       successOverlayOpacity.value = withTiming(1, { duration: 300 });
 
       // Trigger confetti
       confettiRef.current?.play();
+
+      // Reset image animation values to full screen before starting genie animation
+      imageWidth.value = windowWidth;
+      imageHeight.value = windowHeight;
+      imageTop.value = 0;
+      imageLeft.value = 0;
+      imageBorderRadius.value = 0;
+      imageOpacity.value = 1;
 
       // Animate the image shrinking down into the tab bar camera icon
       imageWidth.value = withTiming(targetWidth, { duration: 600 });
@@ -133,7 +141,7 @@ export default function CameraScreen() {
       imageBorderRadius.value = withTiming(targetWidth / 2, { duration: 600 });
       imageOpacity.value = withSequence(
         withTiming(1, { duration: 400 }), // Keep opaque during most of the transition
-        withTiming(0, { duration: 200 })  // Fade out right at the end
+        withTiming(0, { duration: 200 }), // Fade out right at the end
       );
 
       // Once the animation and confetti conclude, reset the state and navigate home
@@ -149,10 +157,9 @@ export default function CameraScreen() {
         imageOpacity.value = 1;
         overlayOpacity.value = 1;
         successOverlayOpacity.value = 0;
-        
+
         router.navigate('/');
-      }, 5000);
-      
+      }, 3000);
     } else {
       setPhoto(null);
       router.navigate('/');
@@ -193,15 +200,13 @@ export default function CameraScreen() {
   if (!hasPermission) {
     return (
       <ThemedView style={styles.permissionContainer}>
-        <Ionicons name="camera-outline" size={64} color={primaryColor} />
-        <ThemedText style={styles.permissionTitle}>
-          Allow camera access
-        </ThemedText>
+        <Ionicons name='camera-outline' size={64} color={primaryColor} />
+        <ThemedText style={styles.permissionTitle}>Allow camera access</ThemedText>
         <ThemedText style={styles.permissionBody}>
           Digital Closet uses your camera to identify and track your clothing items.
         </ThemedText>
-        
-        <Pressable 
+
+        <Pressable
           style={[styles.primaryButton, { backgroundColor: primaryColor }]}
           onPress={async () => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -211,12 +216,10 @@ export default function CameraScreen() {
             }
           }}
         >
-          <ThemedText style={styles.buttonText}>
-            Allow Camera Access
-          </ThemedText>
+          <ThemedText style={styles.buttonText}>Allow Camera Access</ThemedText>
         </Pressable>
-        
-        <Pressable 
+
+        <Pressable
           style={styles.secondaryButton}
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -243,36 +246,42 @@ export default function CameraScreen() {
     const photoUri = 'path' in photo ? `file://${photo.path}` : photo.uri;
     return (
       <View style={styles.container}>
-        <AnimatedImage source={{ uri: photoUri }} style={[styles.absoluteFillObject, animatedImageStyle]} />
-        <Animated.View style={[StyleSheet.absoluteFillObject, animatedOverlayStyle]} pointerEvents="box-none">
+        <AnimatedImage
+          source={{ uri: photoUri }}
+          style={[styles.absoluteFillObject, animatedImageStyle]}
+        />
+        <Animated.View
+          style={[StyleSheet.absoluteFillObject, animatedOverlayStyle]}
+          pointerEvents='box-none'
+        >
           <SafeAreaView style={styles.overlayContainer} edges={['top', 'bottom']}>
             <View style={styles.previewTopBar}>
               <Pressable onPress={retakePhoto} style={styles.iconButton}>
-                <Ionicons name="close" size={28} color="#fff" />
+                <Ionicons name='close' size={28} color='#fff' />
               </Pressable>
             </View>
-            
+
             <View style={styles.previewBottomBar}>
               <Pressable style={styles.retakeButton} onPress={retakePhoto}>
                 <ThemedText style={styles.retakeButtonText}>Retake</ThemedText>
               </Pressable>
-              
-              <Pressable 
-                style={[styles.usePhotoButton, { backgroundColor: primaryColor }]} 
+
+              <Pressable
+                style={[styles.usePhotoButton, { backgroundColor: primaryColor }]}
                 onPress={usePhoto}
                 disabled={isAnimating}
               >
                 <ThemedText style={styles.usePhotoText}>Use Photo</ThemedText>
-                <Ionicons name="checkmark" size={20} color="#fff" style={{ marginLeft: 8 }} />
+                <Ionicons name='checkmark' size={20} color='#fff' style={{ marginLeft: 8 }} />
               </Pressable>
             </View>
           </SafeAreaView>
         </Animated.View>
 
         {/* Success Overlay with Confetti */}
-        <Animated.View 
-          style={[styles.absoluteFillObject, styles.successOverlay, animatedSuccessOverlayStyle]} 
-          pointerEvents="none"
+        <Animated.View
+          style={[styles.absoluteFillObject, styles.successOverlay, animatedSuccessOverlayStyle]}
+          pointerEvents='none'
         >
           <LottieView
             ref={confettiRef}
@@ -290,8 +299,11 @@ export default function CameraScreen() {
             }}
           />
           <View style={styles.successMessageContainer}>
-            <ThemedText style={styles.successMessageTitle}>Submitted! 🎉</ThemedText>
-            <ThemedText style={styles.successMessageBody}>Our AI is working its magic to identify and catalog your item!</ThemedText>
+            <ThemedText style={styles.successMessageEmoji}>🎉</ThemedText>
+            <ThemedText style={styles.successMessageTitle}>Submitted!</ThemedText>
+            <ThemedText style={styles.successMessageBody}>
+              Our AI is working its magic to identify and catalog your fit!
+            </ThemedText>
           </View>
         </Animated.View>
       </View>
@@ -306,33 +318,36 @@ export default function CameraScreen() {
         device={device}
         isActive={isFocused}
         photo={true}
+        photoQualityBalance="speed"
       />
-      <SafeAreaView style={[styles.overlayContainer, StyleSheet.absoluteFillObject]} edges={['top', 'bottom']} pointerEvents="box-none">
+      <SafeAreaView
+        style={[styles.overlayContainer, StyleSheet.absoluteFillObject]}
+        edges={['top', 'bottom']}
+        pointerEvents='box-none'
+      >
         <View style={styles.cameraTopBar}>
-          <Pressable 
+          <Pressable
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               router.navigate('/');
-            }} 
+            }}
             style={styles.iconButton}
           >
-            <Ionicons name="close" size={28} color="#fff" />
+            <Ionicons name='close' size={28} color='#fff' />
           </Pressable>
-          <ThemedText style={styles.helperText}>
-            Take a photo of your outfit today
-          </ThemedText>
+          <ThemedText style={styles.helperText}>Take a photo of your outfit today</ThemedText>
           <View style={{ width: 44 }} />
         </View>
 
         <View style={styles.cameraBottomBar}>
           <Pressable style={styles.libraryButton} onPress={pickImage}>
-            <Ionicons name="images-outline" size={28} color="#fff" />
+            <Ionicons name='images-outline' size={28} color='#fff' />
           </Pressable>
-          
+
           <Pressable style={styles.captureButtonContainer} onPress={takePicture}>
             <View style={styles.captureButtonInner} />
           </Pressable>
-          
+
           <View style={{ width: 44 }} />
         </View>
       </SafeAreaView>
@@ -489,12 +504,14 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   successOverlay: {
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
     alignItems: 'center',
+    paddingTop: 40,
   },
   successMessageContainer: {
     padding: 30,
+    paddingTop: 50,
     borderRadius: 16,
     alignItems: 'center',
     zIndex: 20,
@@ -506,11 +523,22 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     textShadowColor: 'rgba(0, 0, 0, 0.75)',
     textShadowOffset: { width: -1, height: 1 },
-    textShadowRadius: 10
+    textShadowRadius: 10,
+    lineHeight: 28,
+  },
+  successMessageEmoji: {
+    fontSize: 28,
+    marginBottom: 12,
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: -1, height: 1 },
+    textShadowRadius: 10,
+    paddingTop: 10,
   },
   successMessageBody: {
     color: 'rgba(255,255,255,0.9)',
     fontSize: 18,
     fontWeight: '500',
-  }
+    textAlign: 'center',
+    maxWidth: 300
+  },
 });

@@ -47,6 +47,8 @@ export default function TabsLayout() {
               />
             </View>
           ),
+          tabBarStyle: { display: 'none' }, // Hide the tab bar for the camera screen
+          tabBarLabel: undefined, // Ensure no label is shown
         }}
       />
       <Tabs.Screen
