@@ -188,7 +188,7 @@ class Worker:
         finally:
             db.close()
 
-    def run(self):
+    def run(self, once=False):
         logger.info(f"Starting ML worker, polling {settings.sqs_queue_url}")
         while True:
             try:
@@ -218,8 +218,12 @@ class Worker:
                         QueueUrl=settings.sqs_queue_url,
                         ReceiptHandle=receipt_handle
                     )
+                if once:
+                    break
             except Exception as e:
                 logger.error(f"Error in polling loop: {e}")
+                if once:
+                    break
                 time.sleep(5)
 
 if __name__ == "__main__":
