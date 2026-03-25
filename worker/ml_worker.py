@@ -129,55 +129,70 @@ class Worker:
                         
                     # Crop image
                     xyxy = box.xyxy[0].tolist() # [x1, y1, x2, y2]
-                    crop = image.crop((xyxy[0], xyxy[1], xyxy[2], xyxy[3]))
+                    x1, y1, x2, y2 = xyxy
+                    h = y2 - y1
                     
-                    # Run CLIP for classification and embedding
-                    inputs = self.clip_processor(
-                        text=self.text_prompts, 
-                        images=crop, 
-                        return_tensors="pt", 
-                        padding=True
-                    ).to(self.device)
+                    crops_to_process = []
+                    if cls_name == "person":
+                        # Heuristically slice the person to find top, bottom, and shoes separately
+                        crops_to_process.append(("upper", image.crop((x1, y1 + 0.15*h, x2, y1 + 0.6*h))))
+                        crops_to_process.append(("lower", image.crop((x1, y1 + 0.6*h, x2, y1 + 0.95*h))))
+                        crops_to_process.append(("feet", image.crop((x1, y1 + 0.85*h, x2, y2))))
+                    else:
+                        crops_to_process.append(("item", image.crop((x1, y1, x2, y2))))
                     
-                    with torch.no_grad():
-                        outputs = self.clip_model(**inputs)
-                        image_embeds = outputs.image_embeds
-                        logits_per_image = outputs.logits_per_image
-                        probs = logits_per_image.softmax(dim=1)
-                    
-                    # Find best matching prompt
-                    best_idx = probs.argmax().item()
-                    best_key = self.prompt_keys[best_idx]
-                    
-                    # If it's a negative prompt, discard
-                    if isinstance(best_key, str) and best_key.startswith("NEGATIVE_"):
-                        logger.info(f"Discarding crop, matched negative prompt: {self.text_prompts[best_idx]}")
-                        continue
-                    
-                    # We found a clothing item!
-                    category = best_key
-                    confidence = probs[0, best_idx].item()
-                    embedding_vector = image_embeds[0].cpu().numpy().tolist()
-                    
-                    logger.info(f"Identified {category.value} with confidence {confidence:.2f}")
-                    
-                    # Save to DB
-                    item = ClothingItem(
-                        closet_id=closet.id,
-                        name=f"New {category.value.capitalize()}",
-                        category=category,
-                        embedding=embedding_vector
-                    )
-                    db.add(item)
-                    db.flush() # Get item.id
-                    
-                    match = ItemMatch(
-                        photo_id=photo.id,
-                        clothing_item_id=item.id,
-                        confidence_score=confidence
-                    )
-                    db.add(match)
-                    processed_count += 1
+                    for crop_name, crop in crops_to_process:
+                        # Run CLIP for classification and embedding
+                        inputs = self.clip_processor(
+                            text=self.text_prompts, 
+                            images=crop, 
+                            return_tensors="pt", 
+                            padding=True
+                        ).to(self.device)
+                        
+                        with torch.no_grad():
+                            outputs = self.clip_model(**inputs)
+                            image_embeds = outputs.image_embeds
+                            logits_per_image = outputs.logits_per_image
+                            probs = logits_per_image.softmax(dim=1)
+                        
+                        # Find best matching prompt
+                        best_idx = probs.argmax().item()
+                        best_key = self.prompt_keys[best_idx]
+                        confidence = probs[0, best_idx].item()
+                        
+                        # If it's a negative prompt or low confidence, discard
+                        if isinstance(best_key, str) and best_key.startswith("NEGATIVE_"):
+                            logger.debug(f"Discarding {crop_name} crop, matched negative prompt: {self.text_prompts[best_idx]}")
+                            continue
+                            
+                        if confidence < 0.30:
+                            logger.debug(f"Discarding {crop_name} crop due to low confidence ({confidence:.2f})")
+                            continue
+                        
+                        # We found a clothing item!
+                        category = best_key
+                        embedding_vector = image_embeds[0].cpu().numpy().tolist()
+                        
+                        logger.info(f"Identified {category.value} in {crop_name} crop with confidence {confidence:.2f}")
+                        
+                        # Save to DB
+                        item = ClothingItem(
+                            closet_id=closet.id,
+                            name=f"New {category.value.capitalize()}",
+                            category=category,
+                            embedding=embedding_vector
+                        )
+                        db.add(item)
+                        db.flush() # Get item.id
+                        
+                        match = ItemMatch(
+                            photo_id=photo.id,
+                            clothing_item_id=item.id,
+                            confidence_score=confidence
+                        )
+                        db.add(match)
+                        processed_count += 1
                 
             photo.status = PhotoStatus.PROCESSED
             db.commit()
