@@ -54,7 +54,7 @@ async def test_full_upload_and_process_pipeline():
     4. Run the ML Worker once to consume the job.
     5. Verify the database state.
     """
-    async with httpx.AsyncClient(app=app, base_url="http://test") as client:
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
         # 1. Create photo record
         response = await client.post("/photos", json={"taken_at": "2024-01-01T12:00:00Z"})
         assert response.status_code == 201
@@ -71,7 +71,7 @@ async def test_full_upload_and_process_pipeline():
         
         # httpx put to presigned url
         async with httpx.AsyncClient() as s3_client:
-            upload_resp = await s3_client.put(upload_url, content=img_bytes, headers={"Content-Type": "image/heic"})
+            upload_resp = await s3_client.put(upload_url, content=img_bytes, headers={"Content-Type": "image/jpeg"})
             assert upload_resp.status_code == 200
 
         # 3. Confirm upload
