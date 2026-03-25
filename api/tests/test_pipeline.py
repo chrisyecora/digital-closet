@@ -5,6 +5,9 @@ import pytest
 import httpx
 from io import BytesIO
 from PIL import Image
+from dotenv import load_dotenv
+
+load_dotenv(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '.env')))
 
 # Add api to path to import app
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -20,9 +23,13 @@ from ml_worker import Worker
 # Dependency override
 def override_get_current_user():
     db = SessionLocal()
-    user = db.query(User).filter(User.email == "test@example.com").first()
+    # Use environment variables if provided, otherwise default to dummy
+    clerk_id = os.getenv("TEST_CLERK_USER_ID", "test_clerk_id")
+    email = os.getenv("TEST_USER_EMAIL", "test@example.com")
+    
+    user = db.query(User).filter(User.clerk_user_id == clerk_id).first()
     if not user:
-        user = User(clerk_user_id="test_clerk_id", email="test@example.com")
+        user = User(clerk_user_id=clerk_id, email=email)
         db.add(user)
         db.flush()
         
