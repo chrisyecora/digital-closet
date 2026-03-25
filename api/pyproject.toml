@@ -46,3 +46,6 @@ dev = [
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
+log_cli = true
+log_cli_level = "DEBUG"
+log_cli_format = "%(asctime)s [%(levelname)s] %(message)s (%(filename)s:%(lineno)s)"

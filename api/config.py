@@ -18,6 +18,6 @@ class Settings(BaseSettings):
     sqs_endpoint: str = "http://localhost:9324"
     sqs_queue_url: str = "http://localhost:9324/000000000000/photo-uploads"
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(env_file="../.env", env_file_encoding="utf-8", extra="ignore")
 
 settings = Settings()

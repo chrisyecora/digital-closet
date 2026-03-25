@@ -13,42 +13,50 @@ import pillow_heif
 pillow_heif.register_heif_opener()
 
 # Setup logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 # Add API to sys.path to import DB models
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'api')))
 
 import torch
-from transformers import CLIPProcessor, CLIPModel
-from ultralytics import YOLO
+from transformers import CLIPProcessor, CLIPModel, OwlViTProcessor, OwlViTForObjectDetection
 
 from config import settings
 from database import SessionLocal
 from db_models import Photo, PhotoStatus, ItemCategory, ClothingItem, ItemMatch, Closet
 
-# COCO Classes we care about for YOLO filtering
-ALLOWED_COCO_CLASSES = ["person", "tie", "backpack", "umbrella", "handbag", "suitcase"]
-
-# Prompts for CLIP zero-shot classification
-CATEGORY_PROMPTS = {
-    ItemCategory.TOP: "a photo of a top, shirt, or t-shirt",
-    ItemCategory.BOTTOM: "a photo of a bottom, pants, shorts, or skirt",
+# Target textual prompts for OWL-ViT
+OWL_PROMPTS = {
+    ItemCategory.TOP: "a photo of a top or shirt",
+    ItemCategory.BOTTOM: "a photo of pants or shorts",
     ItemCategory.DRESS: "a photo of a dress",
-    ItemCategory.OUTERWEAR: "a photo of outerwear, a jacket, or a coat",
-    ItemCategory.SHOES: "a photo of shoes or sneakers",
-    ItemCategory.ACCESSORY: "a photo of an accessory, hat, or bag"
+    ItemCategory.SHOES: "a photo of shoes",
+    ItemCategory.OUTERWEAR: "a photo of a jacket or outerwear",
+    ItemCategory.ACCESSORY: "a photo of a bag or accessory"
 }
 
-# Negative prompts to filter out backgrounds/noise
-NEGATIVE_PROMPTS = [
-    "a photo of a person's face",
-    "a photo of a cell phone",
-    "a photo of a background",
-    "a photo of skin",
-    "a photo of a room",
-    "a photo of a hand"
-]
+def calculate_iou(box1, box2):
+    """
+    Calculate IoU of two bounding boxes.
+    Boxes are in format [x1, y1, x2, y2]
+    """
+    x1 = max(box1[0], box2[0])
+    y1 = max(box1[1], box2[1])
+    x2 = min(box1[2], box2[2])
+    y2 = min(box1[3], box2[3])
+
+    intersection_area = max(0, x2 - x1) * max(0, y2 - y1)
+    
+    box1_area = (box1[2] - box1[0]) * (box1[3] - box1[1])
+    box2_area = (box2[2] - box2[0]) * (box2[3] - box2[1])
+    
+    union_area = box1_area + box2_area - intersection_area
+    
+    if union_area == 0:
+        return 0.0
+    
+    return intersection_area / union_area
 
 class Worker:
     def __init__(self):
@@ -56,16 +64,17 @@ class Worker:
         logger.info(f"Using device: {self.device}")
         
         # Load models
-        logger.info("Loading YOLOv8n model...")
-        self.yolo_model = YOLO("yolov8n.pt")
+        logger.info("Loading OWL-ViT model...")
+        self.owl_processor = OwlViTProcessor.from_pretrained("google/owlvit-base-patch32")
+        self.owl_model = OwlViTForObjectDetection.from_pretrained("google/owlvit-base-patch32").to(self.device)
         
         logger.info("Loading CLIP model...")
         self.clip_model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32").to(self.device)
         self.clip_processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
         
-        # Build combined text inputs for CLIP
-        self.prompt_keys = list(CATEGORY_PROMPTS.keys()) + ["NEGATIVE_" + str(i) for i in range(len(NEGATIVE_PROMPTS))]
-        self.text_prompts = list(CATEGORY_PROMPTS.values()) + NEGATIVE_PROMPTS
+        # Build text inputs for OWL-ViT
+        self.prompt_keys = list(OWL_PROMPTS.keys())
+        self.text_prompts = list(OWL_PROMPTS.values())
         
         # Init AWS/MinIO/ElasticMQ clients
         self.sqs = boto3.client(
@@ -98,11 +107,6 @@ class Worker:
             image_data = obj['Body'].read()
             image = Image.open(BytesIO(image_data)).convert("RGB")
             
-            # Run YOLO
-            logger.info(f"Running YOLO inference on {photo_id}")
-            results = self.yolo_model(image)
-            boxes = results[0].boxes
-            
             # Ensure closet exists for user
             closet = db.query(Closet).filter(Closet.user_id == user_id).first()
             if not closet:
@@ -110,89 +114,103 @@ class Worker:
                 db.add(closet)
                 db.commit()
 
+            # Run OWL-ViT
+            logger.info(f"Running OWL-ViT inference on {photo_id}")
+            inputs = self.owl_processor(text=[self.text_prompts], images=image, return_tensors="pt").to(self.device)
+            
+            with torch.no_grad():
+                outputs = self.owl_model(**inputs)
+            
+            # Phase 3 & 4: Inference and IoU deduplication
+            target_sizes = torch.tensor([image.size[::-1]]).to(self.device)
+            # Apply baseline confidence threshold (e.g., 0.10)
+            logger.debug(f"Applying baseline confidence threshold 0.10...")
+            results = self.owl_processor.post_process_object_detection(outputs=outputs, target_sizes=target_sizes, threshold=0.10)
+            
+            boxes = results[0]["boxes"].cpu().numpy().tolist()
+            scores = results[0]["scores"].cpu().numpy().tolist()
+            labels = results[0]["labels"].cpu().numpy().tolist()
+            
+            filtered_boxes = [] # store (box, score, label)
+            logger.debug(f"Found {len(boxes)} raw boxes above 0.10 threshold.")
+            for box, score, label in zip(boxes, scores, labels):
+                logger.debug(f"Raw Box - Label: {self.prompt_keys[label].value}, Score: {score:.4f}, Box: {box}")
+                filtered_boxes.append((box, score, label))
+                
+            # Filter overlapping boxes (IoU > 0.60)
+            final_boxes = []
+            for i, (box1, score1, label1) in enumerate(filtered_boxes):
+                keep = True
+                for j, (box2, score2, label2) in enumerate(filtered_boxes):
+                    if i == j:
+                        continue
+                    iou = calculate_iou(box1, box2)
+                    if iou > 0.60:
+                        logger.debug(f"IoU Conflict (iou={iou:.4f}): Box {i} ({self.prompt_keys[label1].value}, score={score1:.4f}) vs Box {j} ({self.prompt_keys[label2].value}, score={score2:.4f})")
+                        if score1 < score2 or (score1 == score2 and i > j):
+                            logger.debug(f"Dropping Box {i} due to lower score or secondary index.")
+                            keep = False
+                            break
+                if keep:
+                    final_boxes.append((box1, score1, label1))
+                    
+            # Deduplicate by category: keep only the highest confidence box per category
+            # This ensures we don't get duplicates like "left shoe" and "right shoe" separately
+            logger.debug(f"Boxes after IoU deduplication: {len(final_boxes)}. Starting category deduplication...")
+            unique_category_boxes = {}
+            for box, score, label in final_boxes:
+                category_name = self.prompt_keys[label].value
+                if label not in unique_category_boxes:
+                    logger.debug(f"Registering primary box for category '{category_name}' with score {score:.4f}")
+                    unique_category_boxes[label] = (box, score, label)
+                elif score > unique_category_boxes[label][1]:
+                    logger.debug(f"Replacing box for category '{category_name}' (old score: {unique_category_boxes[label][1]:.4f}, new score: {score:.4f})")
+                    unique_category_boxes[label] = (box, score, label)
+                else:
+                    logger.debug(f"Discarding lower-confidence box for category '{category_name}' (score {score:.4f} < {unique_category_boxes[label][1]:.4f})")
+            
+            final_boxes = list(unique_category_boxes.values())
+            
             processed_count = 0
-            if boxes is not None and len(boxes) > 0:
-                for box in boxes:
-                    # Class filtering
-                    cls_id = int(box.cls[0].item())
-                    cls_name = self.yolo_model.names[cls_id]
-                    
-                    if cls_name not in ALLOWED_COCO_CLASSES:
-                        logger.debug(f"Skipping YOLO class: {cls_name}")
-                        continue
-                    
-                    # Confidence check
-                    conf = box.conf[0].item()
-                    if conf < 0.25:
-                        logger.debug(f"Skipping low confidence box ({conf:.2f})")
-                        continue
-                        
-                    # Crop image
-                    xyxy = box.xyxy[0].tolist() # [x1, y1, x2, y2]
-                    x1, y1, x2, y2 = xyxy
-                    h = y2 - y1
-                    
-                    crops_to_process = []
-                    if cls_name == "person":
-                        # Heuristically slice the person to find top, bottom, and shoes separately
-                        crops_to_process.append(("upper", image.crop((x1, y1 + 0.15*h, x2, y1 + 0.6*h))))
-                        crops_to_process.append(("lower", image.crop((x1, y1 + 0.6*h, x2, y1 + 0.95*h))))
-                        crops_to_process.append(("feet", image.crop((x1, y1 + 0.85*h, x2, y2))))
-                    else:
-                        crops_to_process.append(("item", image.crop((x1, y1, x2, y2))))
-                    
-                    for crop_name, crop in crops_to_process:
-                        # Run CLIP for classification and embedding
-                        inputs = self.clip_processor(
-                            text=self.text_prompts, 
-                            images=crop, 
-                            return_tensors="pt", 
-                            padding=True
-                        ).to(self.device)
-                        
-                        with torch.no_grad():
-                            outputs = self.clip_model(**inputs)
-                            image_embeds = outputs.image_embeds
-                            logits_per_image = outputs.logits_per_image
-                            probs = logits_per_image.softmax(dim=1)
-                        
-                        # Find best matching prompt
-                        best_idx = probs.argmax().item()
-                        best_key = self.prompt_keys[best_idx]
-                        confidence = probs[0, best_idx].item()
-                        
-                        # If it's a negative prompt or low confidence, discard
-                        if isinstance(best_key, str) and best_key.startswith("NEGATIVE_"):
-                            logger.debug(f"Discarding {crop_name} crop, matched negative prompt: {self.text_prompts[best_idx]}")
-                            continue
-                            
-                        if confidence < 0.30:
-                            logger.debug(f"Discarding {crop_name} crop due to low confidence ({confidence:.2f})")
-                            continue
-                        
-                        # We found a clothing item!
-                        category = best_key
-                        embedding_vector = image_embeds[0].cpu().numpy().tolist()
-                        
-                        logger.info(f"Identified {category.value} in {crop_name} crop with confidence {confidence:.2f}")
-                        
-                        # Save to DB
-                        item = ClothingItem(
-                            closet_id=closet.id,
-                            name=f"New {category.value.capitalize()}",
-                            category=category,
-                            embedding=embedding_vector
-                        )
-                        db.add(item)
-                        db.flush() # Get item.id
-                        
-                        match = ItemMatch(
-                            photo_id=photo.id,
-                            clothing_item_id=item.id,
-                            confidence_score=confidence
-                        )
-                        db.add(match)
-                        processed_count += 1
+            # Phase 5: Embedding & Database Persistence
+            for box, score, label in final_boxes:
+                category = self.prompt_keys[label]
+                x1, y1, x2, y2 = box
+                
+                logger.info(f"Identified {category.value} with confidence {score:.2f}")
+                
+                # Crop image
+                crop = image.crop((x1, y1, x2, y2))
+                
+                # Run CLIP for embedding only
+                clip_inputs = self.clip_processor(
+                    images=crop, 
+                    return_tensors="pt"
+                ).to(self.device)
+                
+                with torch.no_grad():
+                    clip_outputs = self.clip_model.get_image_features(**clip_inputs)
+                    # Normalize embedding vector
+                    image_embeds = clip_outputs / clip_outputs.norm(p=2, dim=-1, keepdim=True)
+                    embedding_vector = image_embeds[0].cpu().numpy().tolist()
+                
+                # Save to DB
+                item = ClothingItem(
+                    closet_id=closet.id,
+                    name=f"New {category.value.capitalize()}",
+                    category=category,
+                    embedding=embedding_vector
+                )
+                db.add(item)
+                db.flush() # Get item.id
+                
+                match = ItemMatch(
+                    photo_id=photo.id,
+                    clothing_item_id=item.id,
+                    confidence_score=score
+                )
+                db.add(match)
+                processed_count += 1
                 
             photo.status = PhotoStatus.PROCESSED
             db.commit()

@@ -17,7 +17,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.
 from main import app
 from auth import get_current_user
 from database import SessionLocal, Base, engine
-from db_models import User, Photo, PhotoStatus, Closet
+from db_models import User, Photo, PhotoStatus, Closet, ItemMatch
 from ml_worker import Worker
 
 # Dependency override
@@ -103,4 +103,13 @@ async def test_full_upload_and_process_pipeline():
     photo = db.query(Photo).filter(Photo.id == photo_id).first()
     assert photo is not None
     assert photo.status == PhotoStatus.PROCESSED
+    
+    # Verify exactly 3 items are identified
+    matches = db.query(ItemMatch).filter(ItemMatch.photo_id == photo_id).all()
+    assert len(matches) == 3, f"Expected 3 items identified, got {len(matches)}"
+    
+    # Check that there are no duplicate categories (assuming Top, Bottom, Shoes are generally what are found)
+    categories = [match.clothing_item.category.value for match in matches]
+    assert len(set(categories)) == 3, f"Expected unique categories, got {categories}"
+    
     db.close()
