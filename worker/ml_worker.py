@@ -7,6 +7,10 @@ import sys
 import os
 from io import BytesIO
 from PIL import Image
+import pillow_heif
+
+# Register HEIF opener with PIL
+pillow_heif.register_heif_opener()
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")

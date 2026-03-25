@@ -64,16 +64,14 @@ async def test_full_upload_and_process_pipeline():
         photo_id = data["id"]
         upload_url = data["upload_url"]
 
-        # 2. Upload dummy image to MinIO
-        # We create a simple blank image. YOLO won't detect any clothing, 
-        # but it proves the pipeline successfully downloads and parses it.
-        img = Image.new('RGB', (416, 416), color=(255, 0, 0))
-        img_bytes = BytesIO()
-        img.save(img_bytes, format='JPEG')
+        # 2. Upload test HEIC image to MinIO
+        img_path = os.path.join(os.path.dirname(__file__), "assets", "test_image.HEIC")
+        with open(img_path, "rb") as f:
+            img_bytes = f.read()
         
         # httpx put to presigned url
         async with httpx.AsyncClient() as s3_client:
-            upload_resp = await s3_client.put(upload_url, content=img_bytes.getvalue(), headers={"Content-Type": "image/jpeg"})
+            upload_resp = await s3_client.put(upload_url, content=img_bytes, headers={"Content-Type": "image/heic"})
             assert upload_resp.status_code == 200
 
         # 3. Confirm upload
