@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, ConfigDict
 from typing import Optional, List
 from datetime import datetime
 from uuid import UUID
@@ -15,8 +15,7 @@ class UserResponse(UserBase):
     created_at: datetime
     updated_at: Optional[datetime]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class ClosetResponse(BaseModel):
     id: UUID
@@ -24,8 +23,7 @@ class ClosetResponse(BaseModel):
     created_at: datetime
     updated_at: Optional[datetime]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class PhotoCreate(BaseModel):
     taken_at: Optional[datetime] = Field(default_factory=datetime.now)
@@ -42,5 +40,4 @@ class PhotoDetailResponse(BaseModel):
     taken_at: datetime
     processed_at: Optional[datetime]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
