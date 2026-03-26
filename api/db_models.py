@@ -68,7 +68,7 @@ class ClothingItem(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     closet = relationship("Closet", back_populates="items")
-    matches = relationship("ItemMatch", foreign_keys="[ItemMatch.clothing_item_id]", back_populates="clothing_item")
+    matches = relationship("ItemMatch", foreign_keys="ItemMatch.clothing_item_id", back_populates="clothing_item")
 
 class Photo(Base):
     __tablename__ = "photos"

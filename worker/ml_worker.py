@@ -8,6 +8,7 @@ import os
 import uuid
 import numpy as np
 import cv2
+from sqlalchemy.sql import func
 from io import BytesIO
 from PIL import Image, ImageOps
 import pillow_heif
@@ -182,17 +183,18 @@ class Worker:
                 max_idx = person_scores.index(max(person_scores))
                 best_score = person_scores[max_idx]
                 
-                if best_score > 0.10: # Reasonable threshold for person detection
+                if best_score > 0.25: # Higher threshold for person detection to avoid noise
                     px1, py1, px2, py2 = person_boxes[max_idx]
                     logger.info(f"Found person with confidence {best_score:.2f}. Cropping image.")
                     image = image.crop((px1, py1, px2, py2))
                     
-                    # Save a debug crop of the person found
-                    crop_dir = os.path.join(os.path.dirname(__file__), 'debug_crops')
-                    os.makedirs(crop_dir, exist_ok=True)
-                    person_crop_path = os.path.join(crop_dir, f"person_{photo_id[:8]}.jpg")
-                    image.save(person_crop_path)
-                    logger.info(f"Saved person crop to {person_crop_path}")
+                    # Save a debug crop of the person found in local environment
+                    if settings.app_env == "local":
+                        crop_dir = os.path.join(os.path.dirname(__file__), 'debug_crops')
+                        os.makedirs(crop_dir, exist_ok=True)
+                        person_crop_path = os.path.join(crop_dir, f"person_{photo_id[:8]}.jpg")
+                        image.save(person_crop_path)
+                        logger.info(f"Saved person crop to {person_crop_path}")
                 else:
                     logger.info("No person detected with high enough confidence. Proceeding with original image.")
             else:
@@ -239,7 +241,8 @@ class Worker:
                     final_boxes.append((box1, score1, label1))
                     
             # Deduplicate by category: keep only the highest confidence box per category
-            # This ensures we don't get duplicates like "left shoe" and "right shoe" separately
+            # NOTE: This is an MVP constraint to prevent duplicate identifications 
+            # (e.g. left shoe vs right shoe). Future iterations may use bbox overlap/IoU only.
             logger.debug(f"Boxes after IoU deduplication: {len(final_boxes)}. Starting category deduplication...")
             unique_category_boxes = {}
             for box, score, label in final_boxes:
@@ -275,16 +278,16 @@ class Worker:
                 # Crop image
                 crop = image.crop((x1, y1, x2, y2))
                 
-                # Save debug crop
-                crop_id = uuid.uuid4().hex[:8]
-                crop_filename = f"{category.value}_{crop_id}.jpg"
-                crop_dir = os.path.join(os.path.dirname(__file__), 'debug_crops')
-                os.makedirs(crop_dir, exist_ok=True)
-                crop_path = os.path.join(crop_dir, crop_filename)
-                crop.save(crop_path)
-                logger.info(f"Saved debug crop to {crop_path}")
-                
-                report["identified_items"][-1]["crop_path"] = crop_path
+                # Save debug crop in local environment
+                if settings.app_env == "local":
+                    crop_id = uuid.uuid4().hex[:8]
+                    crop_filename = f"{category.value}_{crop_id}.jpg"
+                    crop_dir = os.path.join(os.path.dirname(__file__), 'debug_crops')
+                    os.makedirs(crop_dir, exist_ok=True)
+                    crop_path = os.path.join(crop_dir, crop_filename)
+                    crop.save(crop_path)
+                    logger.info(f"Saved debug crop to {crop_path}")
+                    report["identified_items"][-1]["crop_path"] = crop_path
                 
                 # Run CLIP for embedding only
                 clip_inputs = self.clip_processor(
@@ -359,7 +362,6 @@ class Worker:
                     
                     if not dry_run:
                         closest_item.worn_count = (closest_item.worn_count or 0) + 1
-                        from sqlalchemy.sql import func
                         closest_item.last_worn_at = func.now()
                 else:
                     if closest_item:
