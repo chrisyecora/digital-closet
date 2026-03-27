@@ -22,6 +22,7 @@ export default function TabsLayout() {
         tabBarStyle: styles.tabBar,
         tabBarItemStyle: styles.tabBarItem,
         tabBarIconStyle: styles.tabBarIcon,
+        // @ts-ignore - needed to prevent iOS navigation from adding inner padding to floating tab bar
         safeAreaInsets: { bottom: 0 },
         tabBarBackground: () => (
           <BlurView
