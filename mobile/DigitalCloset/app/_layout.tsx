@@ -12,9 +12,12 @@ import { Colors } from '@/constants/theme';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 // Handle OAuth redirects
 WebBrowser.maybeCompleteAuthSession();
+
+const queryClient = new QueryClient();
 
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
 
@@ -81,18 +84,20 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
         <ClerkLoaded>
-          <KeyboardProvider>
-            <BottomSheetModalProvider>
-              <SafeAreaProvider>
-                <ThemeProvider value={colorScheme === 'dark' ? customDarkTheme : customLightTheme}>
-                  <AuthGuard>
-                    <Slot />
-                  </AuthGuard>
-                  <StatusBar style="auto" />
-                </ThemeProvider>
-              </SafeAreaProvider>
-            </BottomSheetModalProvider>
-          </KeyboardProvider>
+          <QueryClientProvider client={queryClient}>
+            <KeyboardProvider>
+              <BottomSheetModalProvider>
+                <SafeAreaProvider>
+                  <ThemeProvider value={colorScheme === 'dark' ? customDarkTheme : customLightTheme}>
+                    <AuthGuard>
+                      <Slot />
+                    </AuthGuard>
+                    <StatusBar style="auto" />
+                  </ThemeProvider>
+                </SafeAreaProvider>
+              </BottomSheetModalProvider>
+            </KeyboardProvider>
+          </QueryClientProvider>
         </ClerkLoaded>
       </ClerkProvider>
     </GestureHandlerRootView>
