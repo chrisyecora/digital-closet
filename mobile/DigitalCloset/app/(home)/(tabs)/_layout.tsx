@@ -22,7 +22,6 @@ export default function TabsLayout() {
         tabBarStyle: styles.tabBar,
         tabBarItemStyle: styles.tabBarItem,
         tabBarIconStyle: styles.tabBarIcon,
-        safeAreaInsets: { bottom: 0 },
         tabBarBackground: () => (
           <BlurView
             tint={Platform.OS === 'ios' ? 'systemChromeMaterial' : 'default'}
