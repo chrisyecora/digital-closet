@@ -14,7 +14,6 @@ export default function PermissionsScreen() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   // const [cameraStatus, setCameraStatus] = useState<string | null>(null);
-  const [notificationStatus, setNotificationStatus] = useState<string | null>(null);
 
   const primaryColor = useThemeColor({}, 'primary');
   const secondaryText = useThemeColor({}, 'secondaryText');
@@ -28,7 +27,7 @@ export default function PermissionsScreen() {
       // setCameraStatus(camStatus);
 
       const { status: notifStatus } = await Notifications.requestPermissionsAsync();
-      setNotificationStatus(notifStatus);
+      console.log('Notification status:', notifStatus);
 
       // Even if they deny, we continue to the app
       router.replace('/');

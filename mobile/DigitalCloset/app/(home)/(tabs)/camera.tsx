@@ -1,5 +1,13 @@
 import React, { useRef, useState } from 'react';
-import { StyleSheet, View, Pressable, Linking, Alert, Dimensions } from 'react-native';
+import {
+  StyleSheet,
+  View,
+  Pressable,
+  Linking,
+  Alert,
+  Dimensions,
+  ActivityIndicator,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 import {
@@ -25,6 +33,7 @@ import * as Haptics from 'expo-haptics';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { usePhotoUpload } from '@/hooks/use-photo-upload';
 
 const AnimatedImage = Animated.createAnimatedComponent(Image);
 
@@ -38,6 +47,7 @@ export default function CameraScreen() {
   const [isAnimating, setIsAnimating] = useState(false);
   const cameraRef = useRef<Camera>(null);
   const confettiRef = useRef<LottieView>(null);
+  const { mutateAsync: uploadPhoto, isPending: isUploading } = usePhotoUpload();
 
   // Animation values
   const imageWidth = useSharedValue(windowWidth);
@@ -105,58 +115,70 @@ export default function CameraScreen() {
     }
   };
 
-  const usePhoto = () => {
+  const handleUsePhoto = async () => {
     if (photo) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setIsAnimating(true);
+      try {
+        const uri = 'path' in photo ? `file://${photo.path}` : photo.uri;
 
-      // Target values for the camera tab icon (approximate position)
-      const targetWidth = 56;
-      const targetHeight = 56;
-      const targetLeft = windowWidth / 2 - targetWidth / 2;
-      const targetTop = windowHeight - 90;
+        // 1. Upload the photo
+        await uploadPhoto({ uri });
 
-      overlayOpacity.value = withTiming(0, { duration: 200 });
-      successOverlayOpacity.value = withTiming(1, { duration: 300 });
+        // 2. Success feedback
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        setIsAnimating(true);
 
-      // Trigger confetti
-      confettiRef.current?.play();
+        // Target values for the camera tab icon (approximate position)
+        const targetWidth = 56;
+        const targetHeight = 56;
+        const targetLeft = windowWidth / 2 - targetWidth / 2;
+        const targetTop = windowHeight - 90;
 
-      // Reset image animation values to full screen before starting genie animation
-      imageWidth.value = windowWidth;
-      imageHeight.value = windowHeight;
-      imageTop.value = 0;
-      imageLeft.value = 0;
-      imageBorderRadius.value = 0;
-      imageOpacity.value = 1;
+        overlayOpacity.value = withTiming(0, { duration: 200 });
+        successOverlayOpacity.value = withTiming(1, { duration: 300 });
 
-      // Animate the image shrinking down into the tab bar camera icon
-      imageWidth.value = withTiming(targetWidth, { duration: 600 });
-      imageHeight.value = withTiming(targetHeight, { duration: 600 });
-      imageTop.value = withTiming(targetTop, { duration: 600 });
-      imageLeft.value = withTiming(targetLeft, { duration: 600 });
-      imageBorderRadius.value = withTiming(targetWidth / 2, { duration: 600 });
-      imageOpacity.value = withSequence(
-        withTiming(1, { duration: 400 }), 
-        withTiming(0, { duration: 200 }),
-      );
+        // Trigger confetti
+        confettiRef.current?.play();
 
-      // Once the animation and confetti conclude, reset the state and navigate home
-      setTimeout(() => {
-        setPhoto(null);
-        setIsAnimating(false);
-        // Reset animation values for the next time
+        // Reset image animation values to full screen before starting genie animation
         imageWidth.value = windowWidth;
         imageHeight.value = windowHeight;
         imageTop.value = 0;
         imageLeft.value = 0;
         imageBorderRadius.value = 0;
         imageOpacity.value = 1;
-        overlayOpacity.value = 1;
-        successOverlayOpacity.value = 0;
 
-        router.replace('/');
-      }, 3000);
+        // Animate the image shrinking down into the tab bar camera icon
+        imageWidth.value = withTiming(targetWidth, { duration: 600 });
+        imageHeight.value = withTiming(targetHeight, { duration: 600 });
+        imageTop.value = withTiming(targetTop, { duration: 600 });
+        imageLeft.value = withTiming(targetLeft, { duration: 600 });
+        imageBorderRadius.value = withTiming(targetWidth / 2, { duration: 600 });
+        imageOpacity.value = withSequence(
+          withTiming(1, { duration: 400 }),
+          withTiming(0, { duration: 200 }),
+        );
+
+        // Once the animation and confetti conclude, reset the state and navigate home
+        setTimeout(() => {
+          setPhoto(null);
+          setIsAnimating(false);
+          // Reset animation values for the next time
+          imageWidth.value = windowWidth;
+          imageHeight.value = windowHeight;
+          imageTop.value = 0;
+          imageLeft.value = 0;
+          imageBorderRadius.value = 0;
+          imageOpacity.value = 1;
+          overlayOpacity.value = 1;
+          successOverlayOpacity.value = 0;
+
+          router.replace('/');
+        }, 3000);
+      } catch (error) {
+        console.error('Upload failed:', error);
+        Alert.alert('Upload Failed', 'There was an error uploading your photo. Please try again.');
+      }
     } else {
       setPhoto(null);
       router.replace('/');
@@ -274,14 +296,23 @@ export default function CameraScreen() {
 
                 <Pressable
                   style={[styles.usePhotoButton, { backgroundColor: primaryColor }]}
-                  onPress={usePhoto}
-                  disabled={isAnimating}
+                  onPress={handleUsePhoto}
+                  disabled={isAnimating || isUploading}
                 >
                   <ThemedText style={styles.usePhotoText}>Use Photo</ThemedText>
                   <Ionicons name='checkmark' size={20} color='#fff' style={{ marginLeft: 8 }} />
                 </Pressable>
               </View>
             </SafeAreaView>
+
+            {/* Loading Overlay */}
+            {isUploading && (
+              <View style={[StyleSheet.absoluteFillObject, styles.loadingOverlay]}>
+                <BlurView intensity={30} tint='dark' style={StyleSheet.absoluteFill} />
+                <ActivityIndicator size='large' color='#fff' />
+                <ThemedText style={styles.loadingText}>Uploading to Closet...</ThemedText>
+              </View>
+            )}
           </Animated.View>
 
           {/* Success Overlay with Confetti */}
