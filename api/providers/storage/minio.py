@@ -31,3 +31,18 @@ class MinIOStorageProvider(StorageProvider):
             # We would usually log this properly
             print(f"Error generating MinIO presigned URL: {e}")
             raise
+
+    def generate_presigned_download_url(self, object_name: str, expiration: int = 3600) -> str:
+        try:
+            response = self.s3_client.generate_presigned_url(
+                "get_object",
+                Params={
+                    "Bucket": self.bucket,
+                    "Key": object_name,
+                },
+                ExpiresIn=expiration,
+            )
+            return response
+        except Exception as e:
+            print(f"Error generating MinIO presigned download URL: {e}")
+            raise

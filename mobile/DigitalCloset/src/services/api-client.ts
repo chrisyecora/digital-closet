@@ -21,22 +21,36 @@ export async function apiRequest<T>(
     console.log(`[API Request] ${options.method || "GET"} ${fullUrl}`);
     console.log("[API Headers]", Object.fromEntries(headers.entries()));
     if (options.body instanceof FormData) {
-      console.log("[API Body] FormData: " + JSON.stringify(Array.from(options.body.entries())));
+      console.log("[API Body] FormData: <FormData Object>");
     } else if (options.body) {
       console.log("[API Body]", options.body);
     }
 
-    const response = await fetch(fullUrl, {
-      ...options,
-      headers,
-    });
+    try {
+      const response = await fetch(fullUrl, {
+        ...options,
+        headers,
+      });
 
-    if (!response.ok) {
-      const errorBody = await response.json().catch(() => ({}));
-      throw new Error(errorBody.detail || `API request failed with status ${response.status}`);
+      console.log(`[API Response] ${response.status} ${response.statusText}`);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`[API Error Body]`, errorText);
+        try {
+          const errorBody = JSON.parse(errorText);
+          throw new Error(errorBody.detail || `API request failed with status ${response.status}`);
+        } catch (e) {
+          throw new Error(`API request failed with status ${response.status}: ${errorText}`);
+        }
+      }
+
+      return await response.json();
+    } catch (fetchError) {
+      console.error(`[API Fetch Failure] Failed to reach ${fullUrl}`);
+      console.error(fetchError);
+      throw fetchError;
     }
-
-    return await response.json();
   } catch (error) {
     if (error instanceof Error) {
       console.error(`API Request Error [${path}]:`, error.message);

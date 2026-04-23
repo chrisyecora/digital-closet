@@ -41,3 +41,16 @@ class PhotoDetailResponse(BaseModel):
     processed_at: Optional[datetime]
 
     model_config = ConfigDict(from_attributes=True)
+
+class ItemResponse(BaseModel):
+    id: UUID
+    imageUrl: str
+    category: str
+    subCategory: Optional[str] = None
+    color: str
+    lastWorn: datetime
+    firstLogged: datetime
+    wearCount: int
+    isDormant: bool
+
+    model_config = ConfigDict(from_attributes=True)

@@ -572,4 +572,15 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     maxWidth: 300,
   },
+  loadingOverlay: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 50,
+  },
+  loadingText: {
+    color: '#fff',
+    marginTop: 16,
+    fontSize: 16,
+    fontWeight: '600',
+  },
 });

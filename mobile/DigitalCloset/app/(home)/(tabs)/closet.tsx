@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Pressable, ScrollView } from 'react-native';
+import { StyleSheet, View, Pressable, ScrollView, RefreshControl, ActivityIndicator } from 'react-native';
 import { useAuth } from '@clerk/expo';
 import { useRouter } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
@@ -12,7 +12,8 @@ import Animated from 'react-native-reanimated';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useThemeColor } from '@/hooks/use-theme-color';
-import { mockItems, Category, ClosetItem } from '@/data/mockItems';
+import { Category, ClosetItem } from '@/data/mockItems';
+import { useItems } from '@/hooks/use-items';
 
 const AnimatedImage = Animated.createAnimatedComponent(Image);
 const TypedFlashList = FlashList as any;
@@ -32,12 +33,14 @@ export default function Dashboard() {
   
   const [selectedCategory, setSelectedCategory] = useState<Category | 'All'>('All');
   
+  const { data: items = [], isLoading, isRefetching, refetch } = useItems();
+
   const primaryColor = useThemeColor({}, 'primary');
   const alternateColor = useThemeColor({}, 'alternate');
   const secondaryText = useThemeColor({}, 'secondaryText');
   const errorColor = useThemeColor({}, 'error');
 
-  const filteredItems = mockItems.filter(
+  const filteredItems = items.filter(
     item => selectedCategory === 'All' || item.category === selectedCategory
   );
 
@@ -106,7 +109,7 @@ export default function Dashboard() {
           <View>
             <ThemedText type="title">Closet</ThemedText>
             <ThemedText style={[styles.headerSubtitle, { color: secondaryText }]}>
-              {mockItems.length} items
+              {items.length} items
             </ThemedText>
           </View>
           <Pressable 
@@ -120,7 +123,7 @@ export default function Dashboard() {
           </Pressable>
         </View>
 
-        {mockItems.length > 0 && (
+        {items.length > 0 && (
           <View style={styles.filtersContainer}>
             <ScrollView 
               horizontal 
@@ -157,7 +160,11 @@ export default function Dashboard() {
         )}
 
         <View style={styles.listContainer}>
-          {mockItems.length === 0 ? (
+          {isLoading ? (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+              <ActivityIndicator size="large" color={primaryColor} />
+            </View>
+          ) : items.length === 0 ? (
             renderEmptyState()
           ) : (
             <TypedFlashList
@@ -167,6 +174,9 @@ export default function Dashboard() {
               numColumns={2}
               contentContainerStyle={styles.listContent}
               showsVerticalScrollIndicator={false}
+              refreshControl={
+                <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={primaryColor} />
+              }
               ListEmptyComponent={
                 <View style={styles.categoryEmptyState}>
                   <ThemedText style={styles.categoryEmptyText}>No items found in this category</ThemedText>
@@ -176,7 +186,7 @@ export default function Dashboard() {
           )}
         </View>
 
-        {mockItems.length > 0 && (
+        {items.length > 0 && (
           <Pressable 
             style={[styles.fab, { backgroundColor: primaryColor }]}
             onPress={() => {

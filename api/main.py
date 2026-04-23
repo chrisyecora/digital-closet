@@ -1,11 +1,12 @@
 from fastapi import FastAPI, Depends
 from auth import get_current_user
 from db_models import User
-from routers import photos
+from routers import photos, items
 
 app = FastAPI()
 
 app.include_router(photos.router)
+app.include_router(items.router)
 
 @app.get("/health")
 def health():
