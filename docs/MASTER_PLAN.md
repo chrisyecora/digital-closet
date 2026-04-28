@@ -6,7 +6,7 @@ This plan outlines the development phases for the Digital Closet application, bu
 - **Backend**: FastAPI (Python)
 - **Database**: PostgreSQL with `pgvector`
 - **Infrastructure**: AWS S3 (Storage), AWS SQS (Message Queue)
-- **Machine Learning**: YOLO (Detection/Cropping), CLIP (512-dim Embeddings)
+- **Machine Learning**: OWL-ViT (Zero-shot Detection/Person Removal), CLIP (512-dim Embeddings)
 - **Authentication**: Clerk
 
 ---
@@ -42,18 +42,18 @@ To ensure maximum precision and alignment, the following protocol MUST be follow
   - [ ] Create `POST /photos` endpoint to generate pre-signed S3 URLs.
   - [ ] Implement background photo upload from the React Native client.
   - [ ] Create `PATCH /photos/{id}` endpoint to confirm upload and publish a message to SQS.
-- [ ] **2.2 ML Processing Worker (SQS, YOLO, CLIP)**
+- [ ] **2.2 ML Processing Worker (SQS, OWL-ViT, CLIP)**
   - [ ] Set up SQS consumer with atomic locking to prevent duplicate processing.
   - [ ] Implement S3 fetch logic within the worker.
-  - [ ] Integrate YOLO model to detect clothing items and crop the image.
+  - [ ] Integrate OWL-ViT model to detect clothing items and person-detection for background removal via cropping.
   - [ ] Integrate CLIP model to generate 512-dimensional embeddings from the cropped images.
+  - [ ] Implement zero-shot classification for `sub_category` and `color` using CLIP.
   - [ ] Ensure complete idempotency across the worker pipeline.
 - [ ] **2.3 Vector Matching Engine (pgvector)**
   - [ ] Implement cosine similarity search using `pgvector` scoped by `user_id` and `category`.
-  - [ ] Apply confidence-based routing logic with a `+0.05` boost if detected `sub_category` matches:
-    - [ ] `> 0.85`: Auto-match to existing item (increment `worn_count` independently for each photo).
-    - [ ] `0.65 - 0.85`: Flag as pending (requires user confirmation).
-    - [ ] `< 0.65`: Create as a completely new item.
+  - [ ] Apply instance matching logic using a 0.12 cosine distance threshold:
+    - [ ] `< 0.12`: Auto-match to existing item (increment `worn_count`).
+    - [ ] `>= 0.12`: Create as a completely new item.
 
 ## Phase 3: UI/UX (Onboarding & Closet Management)
 *Focus: Delivering the core user experience, from first launch to daily closet management.*

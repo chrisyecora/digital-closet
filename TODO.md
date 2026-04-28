@@ -30,23 +30,23 @@
 
 ## Phase 2: Core Pipeline (Photo Upload & ML)
 ### 2.1 Upload Flow (S3 & API)
-- [ ] 2.1.1 Create `POST /photos` endpoint to generate pre-signed S3 URLs.
-- [ ] 2.1.2 Implement background photo upload from the React Native client.
-- [ ] 2.1.3 Create `PATCH /photos/{id}` endpoint to confirm upload and publish a message to SQS.
-- [ ] **PAUSE FOR USER VALIDATION (Phase 2.1)**
+- [x] 2.1.1 Create `POST /photos` endpoint to generate pre-signed S3 URLs.
+- [x] 2.1.2 Implement background photo upload from the React Native client.
+- [x] 2.1.3 Create `POST /photos/{id}/confirm` endpoint to confirm upload and publish a message to SQS.
+- [x] **PAUSE FOR USER VALIDATION (Phase 2.1)**
 
-### 2.2 ML Processing Worker (SQS, YOLO, CLIP)
-- [ ] 2.2.1 Set up SQS consumer with atomic locking to prevent duplicate processing.
-- [ ] 2.2.2 Implement S3 fetch logic within the worker.
-- [ ] 2.2.3 Integrate YOLO model to detect clothing items and crop the image.
-- [ ] 2.2.4 Integrate CLIP model to generate 512-dimensional embeddings from the cropped images.
-- [ ] 2.2.5 Ensure complete idempotency across the worker pipeline.
-- [ ] **PAUSE FOR USER VALIDATION (Phase 2.2)**
+### 2.2 ML Processing Worker (SQS, OWL-ViT, CLIP)
+- [x] 2.2.1 Set up SQS consumer with atomic locking to prevent duplicate processing.
+- [x] 2.2.2 Implement S3 fetch logic within the worker.
+- [x] 2.2.3 Integrate OWL-ViT model to detect clothing items and crop the image (background person removal).
+- [x] 2.2.4 Integrate CLIP model to generate 512-dimensional embeddings from the cropped images.
+- [x] 2.2.5 Ensure complete idempotency across the worker pipeline and photo uploads (file hashing).
+- [x] **PAUSE FOR USER VALIDATION (Phase 2.2)**
 
 ### 2.3 Vector Matching Engine (pgvector)
-- [ ] 2.3.1 Implement cosine similarity search using `pgvector`.
-- [ ] 2.3.2 Apply confidence-based routing logic (> 0.85 auto-match, 0.65 - 0.85 pending, < 0.65 new item).
-- [ ] **PAUSE FOR USER VALIDATION (Phase 2.3)**
+- [x] 2.3.1 Implement cosine similarity search using `pgvector`.
+- [x] 2.3.2 Apply confidence-based routing logic (> 0.12 distance auto-match, else new item).
+- [x] **PAUSE FOR USER VALIDATION (Phase 2.3)**
 
 ---
 
@@ -65,12 +65,12 @@
 - [ ] **PAUSE FOR USER VALIDATION (Phase 3.2)**
 
 ### 3.3 Item Management
-- [ ] 3.3.1 Build the Item Detail view displaying wear history and co-wear patterns.
+- [x] 3.3.1 Build the Item Detail view displaying wear history.
 - [ ] 3.3.2 Create a manual "Add Item" form as a fallback to the ML pipeline.
 - [ ] **PAUSE FOR USER VALIDATION (Phase 3.3)**
 
 ### 3.4 Match Resolution
-- [ ] 3.4.1 Build a bottom-sheet UI for users to confirm/reject "pending" matches (0.65 - 0.85 confidence).
+- [ ] 3.4.1 Build a bottom-sheet UI for users to confirm/reject "pending" matches.
 - [ ] 3.4.2 Connect the bottom-sheet to the `PATCH /item-matches/{id}` endpoint.
 - [ ] **PAUSE FOR USER VALIDATION (Phase 3.4)**
 

@@ -23,18 +23,18 @@ Based on the system design and project overview, here is the proposed Test-Drive
 *   **Image Retrieval:** 
     *   *Test:* Write unit tests mocking S3 to verify fetching logic handles successful and failed downloads correctly.
     *   *Implement:* Logic to fetch uploaded photos from S3 (or a local mock for development).
-*   **Detection & Classification (YOLO):** 
-    *   *Test:* Write unit tests with dummy images to verify the bounding box generation, cropping, and classification parsing.
-    *   *Implement:* Integrate YOLO to detect clothing items in the photo, crop them, and classify their category/sub-category.
+*   **Detection & Classification (OWL-ViT):** 
+    *   *Test:* Write unit tests with dummy images to verify the bounding box generation, person-detection cropping, and classification parsing.
+    *   *Implement:* Integrate OWL-ViT for zero-shot detection of clothing items and person-detection for background removal via cropping.
 *   **Embedding Generation (CLIP):** 
     *   *Test:* Write unit tests with dummy cropped images to verify the 512-dimensional vector embedding generation.
-    *   *Implement:* Integrate CLIP to generate vector embeddings for each cropped clothing item.
+    *   *Implement:* Integrate CLIP to generate vector embeddings for each cropped clothing item and perform zero-shot classification for sub-category and color.
 *   **Similarity Search (pgvector):** 
-    *   *Test:* Write unit tests (with a test database) to insert mock embeddings and verify the cosine similarity search returns the correct nearest neighbors based on the `user_id`, `category`, and `sub_category` filters.
+    *   *Test:* Write unit tests (with a test database) to insert mock embeddings and verify the cosine similarity search returns the correct nearest neighbors based on the `user_id` and `category` filters.
     *   *Implement:* The cosine similarity search logic in Postgres.
 *   **Matching Logic:** 
-    *   *Test:* Write unit tests for the confidence tier logic, covering all three thresholds (`> 0.85`, `0.65 - 0.85`, `< 0.65`) and verifying the expected outputs (auto-match, flag for review, create new).
-    *   *Implement:* The confidence tier business logic.
+    *   *Test:* Write unit tests for the instance matching logic, verifying that the 0.12 cosine distance threshold correctly distinguishes between existing items and new garments.
+    *   *Implement:* The 0.12 cosine distance threshold logic.
 
 ## Phase 3: Backend API Development
 **Goal:** Build the API endpoints for the mobile client using TDD.
@@ -74,8 +74,8 @@ Based on the system design and project overview, here is the proposed Test-Drive
 
 ## Phase 5: Integration, Testing & Polish
 **Goal:** Ensure end-to-end functionality and prepare for beta usage.
-*   **E2E Testing:** Verify the complete flow via automated E2E tests (e.g., using Detox for React Native or a similar suite): App Photo Capture -> S3 Upload -> API Confirmation -> SQS Queue -> Worker Processing (YOLO + CLIP) -> DB Write -> App Dashboard Update.
-*   **Accuracy Tuning:** Test the YOLO detection and CLIP similarity matching with real-world outfit photos. Adjust the confidence thresholds (0.85, 0.65) if necessary.
+*   **E2E Testing:** Verify the complete flow via automated E2E tests (e.g., using Detox for React Native or a similar suite): App Photo Capture -> S3 Upload -> API Confirmation -> SQS Queue -> Worker Processing (OWL-ViT + CLIP) -> DB Write -> App Dashboard Update.
+*   **Accuracy Tuning:** Test the OWL-ViT detection and CLIP similarity matching with real-world outfit photos. Adjust the 0.12 cosine distance threshold if necessary.
 *   **CI/CD Pipeline:** Set up automated CI workflows (e.g., GitHub Actions) to run all unit and integration tests on every pull request, enforcing that tests pass before any merge.
 
 ## Future Considerations (Post-MVP)

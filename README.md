@@ -16,11 +16,11 @@ The result is a zero-effort dashboard that surfaces:
 ### 1. Daily Photo Logging
 Users snap a single photo of their outfit. Whether it's a mirror selfie, a flat lay, or a torso shot, the system is designed to handle unconstrained formats.
 
-### 2. AI Clothing Detection (YOLO)
-The system automatically detects individual clothing items and classifies them by category (top, bottom, shoes, etc.), color, and fit.
+### 2. AI Clothing Detection (OWL-ViT)
+The system uses OWL-ViT for zero-shot detection of individual clothing items, automatically classifying them by category (top, bottom, shoes, etc.). It also includes person-detection to automatically crop backgrounds.
 
 ### 3. Instance Matching (CLIP + pgvector)
-This is the core differentiator. Using OpenAI CLIP embeddings and `pgvector` similarity search, the system determines if a detected item is the *exact same physical garment* seen in a previous photo. This allows for precise wear tracking without manual tagging.
+This is the core differentiator. Using OpenAI CLIP embeddings and `pgvector` similarity search, the system determines if a detected item is the *exact same physical garment* seen in a previous photo using a 0.12 cosine distance threshold. This allows for precise wear tracking without manual tagging.
 
 ### 4. Intelligent Dashboard
 A data-rich view of your wardrobe that highlights your style patterns and identifies "closet bloat" through dormancy flags.
@@ -31,13 +31,13 @@ The project is built with a focus on offloading heavy ML inference from the mobi
 
 - **iOS App**: React Native (iOS-first experience).
 - **FastAPI Gateway**: Orchestrates uploads, reads, and user management.
-- **Inference Pipeline**: Asynchronous Python workers using YOLO for detection and CLIP for embedding generation.
+- **Inference Pipeline**: Asynchronous Python workers using OWL-ViT for detection and CLIP for embedding generation.
 - **Vector Database**: PostgreSQL with `pgvector` for native, high-performance similarity search.
 - **Messaging**: SQS-based decoupling to handle bursty upload traffic gracefully.
 
 ## 🛠️ Tech Stack
 
-- **ML**: PyTorch, Ultralytics YOLO, OpenAI CLIP.
+- **ML**: PyTorch, Google OWL-ViT, OpenAI CLIP.
 - **Backend**: Python 3.12, FastAPI, SQLAlchemy, Alembic.
 - **Infrastructure**: AWS (S3, SQS, RDS, ECS), Docker Compose.
 - **Mobile**: React Native.

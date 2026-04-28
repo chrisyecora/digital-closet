@@ -55,7 +55,7 @@ graph TD
 ### 3.2 Key Components
 *   **iOS Client:** Native camera integration and direct-to-S3 uploads via pre-signed URLs.
 *   **API Gateway (FastAPI):** Handles authentication, issues pre-signed URLs, and serves the "Read Path" for closet data.
-*   **ML Worker (Python):** Executes the "Write Path" (Inference Pipeline) using YOLO for detection and CLIP for vector embeddings.
+*   **ML Worker (Python):** Executes the "Write Path" (Inference Pipeline) using OWL-ViT for zero-shot detection and CLIP for vector embeddings.
 *   **PostgreSQL + pgvector:** Stores relational data and performs high-speed vector similarity searches.
 
 ---
@@ -63,7 +63,7 @@ graph TD
 ## 4. Key Design Decisions & Trade-offs
 
 *   **Server-Side Inference:** 
-    *   *Decision:* Run ML models (YOLO, CLIP) on server-side GPUs rather than on-device.
+    *   *Decision:* Run ML models (OWL-ViT, CLIP) on server-side GPUs rather than on-device.
     *   *Trade-off:* Increases infrastructure cost but ensures consistent accuracy and performance across all iOS devices.
 *   **Asynchronous Processing:** 
     *   *Decision:* Decouple photo upload from processing via SQS.
@@ -71,9 +71,9 @@ graph TD
 *   **Cosine Similarity (pgvector):**
     *   *Decision:* Use cosine similarity for vector matching.
     *   *Trade-off:* Better at handling varying lighting/contrast conditions than Euclidean distance, though slightly more compute-intensive.
-*   **Hybrid Matching Logic:**
-    *   *Decision:* Use three confidence tiers (Auto-match, Prompt User, New Item).
-    *   *Trade-off:* Balances automation with accuracy by involving the user only when confidence is middling.
+*   **0.12 Cosine Distance Matching Logic:**
+    *   *Decision:* Use a 0.12 cosine distance threshold to distinguish between physical garments.
+    *   *Trade-off:* Simple, binary logic for MVP that prioritizes high-confidence automated matches.
 
 ---
 
@@ -93,7 +93,7 @@ graph TD
 |-----------|------------|
 | Frontend | React Native (iOS) |
 | Backend | FastAPI (Python 3.12) |
-| ML Frameworks | Ultralytics YOLO, OpenAI CLIP |
+| ML Frameworks | Google OWL-ViT, OpenAI CLIP |
 | Database | AWS RDS Postgres + pgvector |
 | Message Queue | AWS SQS |
 | Storage | AWS S3 |

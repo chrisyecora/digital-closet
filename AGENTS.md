@@ -52,10 +52,11 @@ Agents must strictly mimic the surrounding style. Do not introduce new libraries
    - Group sequentially: Standard library imports -> Third-party imports -> Local application imports.
    - Use absolute imports over relative imports where feasible (`from api.core.config import settings`).
 4. **Types:** Strict type hinting is mandatory (`Pydantic` models for validation, `typing` for function signatures). Use modern Python 3.12+ features (e.g., `list[str]` instead of `List[str]`).
-5. **Error Handling:**
+5. **API Response Formatting:** Backend logic uses `snake_case`, but API responses are automatically converted to `camelCase` via `BaseResponse`. All response models MUST inherit from `BaseResponse`.
+6. **Error Handling:**
    - Use FastAPI's `HTTPException` for routing errors: `raise HTTPException(status_code=404, detail="Not found")`
    - Handle external API/DB failures with `try/except` and log errors appropriately. Do not swallow exceptions blindly.
-6. **Async/Await:** Use `async def` for all API route handlers, DB queries, and external I/O bound operations.
+7. **Async/Await:** Use `async def` for all API route handlers, DB queries, and external I/O bound operations.
 
 ### 📘 TypeScript (Mobile - React Native/Expo)
 
@@ -84,7 +85,7 @@ Agents must strictly mimic the surrounding style. Do not introduce new libraries
 
 - **@master (Chief Architect):** Read-only. Strategic oversight. Must approve major structural changes. Consults `docs/llds/`.
 - **@frontend (UI Engineer):** Builds React Native (Expo) iterations. Scoped to `./mobile/DigitalCloset/`. Relies on `@/components`.
-- **@backend (Systems Engineer):** FastAPI and ML logic. Scoped to `./api/`, `./worker/`, and `./migrations/`. Always uses Alembic for DB changes.
+- **@backend (Systems Engineer):** FastAPI and ML logic. Scoped to `./api/`, `./worker/`, and `./migrations/`. Always uses Alembic for DB changes. Integrates OWL-ViT and CLIP.
 - **@fullstack (Integration):** Wires the UI to the API. Handles env configs safely.
 - **@product-owner (QA):** Agentic sanity checker. Ensures the app compiles, runs, and linting passes before concluding a session.
 
@@ -122,7 +123,7 @@ Agents must strictly mimic the surrounding style. Do not introduce new libraries
 ## 📂 Repository Structure & Purpose
 
 - `api/`: The backend core. Contains FastAPI routes, SQLAlchemy models, Pydantic schemas, and external API integrations.
-- `worker/`: Background jobs and ML processing logic (e.g., PyTorch, YOLO, CLIP, Background task runners).
+- `worker/`: Background jobs and ML processing logic (e.g., PyTorch, OWL-ViT, CLIP, Background task runners).
 - `mobile/DigitalCloset/`: The frontend application powered by React Native Expo and Expo Router.
 - `docs/`: Comprehensive documentation suite containing specs, designs, and architectural decisions.
 - `migrations/`: Holds Alembic database migrations. Do not manually edit generated migration logic without testing.

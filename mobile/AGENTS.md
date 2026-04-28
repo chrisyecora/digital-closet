@@ -148,6 +148,7 @@ components/
 ## API Communication
 
 - Centralize all API calls in a `services/` layer — never call fetch directly from a component or screen
+- **Data Contract:** The backend provides `camelCase` JSON responses. Ensure TypeScript interfaces in `services/` and `types/` match this convention (e.g., `imageUrl`, `wornCount`).
 - Always handle loading, success, and error states for every API call
 - Use React Query's caching and background refetch
 

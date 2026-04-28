@@ -18,7 +18,7 @@ These specs define the UI and API behavior for the user's digital wardrobe dashb
 | ID | Requirement (EARS) | Status |
 |----|-------------------|--------|
 | **CLOSET-UI-006** | **When** a user taps the "+" button, the Mobile Client **shall** display the "Add Item" form with Name, Category, Sub-category, and Color fields. | [ ] |
-| **CLOSET-API-004** | **When** a new item is manually added, the API **shall** persist the item record and initialize its `worn_count` to zero. | [ ] |
+| **CLOSET-API-004** | **When** a new item is added, the system **shall** persist the item record and initialize its `worn_count` to 1. | [x] |
 
 ### Match Resolution
 | ID | Requirement (EARS) | Status |
