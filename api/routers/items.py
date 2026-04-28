@@ -6,7 +6,7 @@ import uuid
 
 from auth import get_current_user
 from database import get_db
-from db_models import User, ClothingItem
+from db_models import User, ClothingItem, ItemCategory
 from models import ItemResponse, ItemDetailResponse
 from dependencies import StorageDependency
 
@@ -30,32 +30,37 @@ def format_item(item: ClothingItem, storage: StorageDependency) -> dict:
     # Calculate dormancy: dormant if not worn in 60 days
     is_dormant = False
     if last_worn:
+        # Ensure last_worn is timezone-aware for comparison
+        if last_worn.tzinfo is None:
+            last_worn = last_worn.replace(tzinfo=timezone.utc)
         days_since_worn = (now - last_worn).days
         if days_since_worn > 60:
             is_dormant = True
             
-    # Format category enum to Title Case string to match React Native (e.g. ItemCategory.TOP -> 'Tops')
+    # Format category enum to Title Case string for mobile UI
     cat_str = item.category.value if item.category else "unknown"
-    if cat_str == "top": cat_str = "Tops"
-    elif cat_str == "bottom": cat_str = "Bottoms"
-    elif cat_str == "dress": cat_str = "Tops" # Map to tops for MVP
-    elif cat_str == "outerwear": cat_str = "Outerwear"
-    elif cat_str == "shoes": cat_str = "Shoes"
-    elif cat_str == "accessory": cat_str = "Accessories"
-    else: cat_str = "Tops"
+    category_map = {
+        ItemCategory.TOP.value: "Tops",
+        ItemCategory.BOTTOM.value: "Bottoms",
+        ItemCategory.DRESS.value: "Dresses",
+        ItemCategory.OUTERWEAR.value: "Outerwear",
+        ItemCategory.SHOES.value: "Shoes",
+        ItemCategory.ACCESSORY.value: "Accessories"
+    }
+    display_category = category_map.get(cat_str, cat_str.capitalize())
 
     return {
         "id": item.id,
-        "name": item.name or f"Unnamed {cat_str}",
+        "name": item.name or f"Unnamed {display_category}",
         "description": item.description,
-        "imageUrl": image_url,
-        "category": cat_str,
-        "subCategory": item.sub_category,
+        "image_url": image_url,
+        "category": display_category,
+        "sub_category": item.sub_category,
         "color": item.color or "Unknown",
-        "lastWorn": last_worn,
-        "firstLogged": item.created_at,
-        "wearCount": item.worn_count,
-        "isDormant": is_dormant
+        "last_worn": last_worn,
+        "first_logged": item.created_at,
+        "wear_count": item.worn_count,
+        "is_dormant": is_dormant
     }
 
 @router.get("", response_model=List[ItemResponse])
@@ -112,11 +117,14 @@ async def delete_item(
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
     
-    # Delete cropped image from S3 if it exists
-    if item.s3_key:
-        storage.delete_object(item.s3_key)
+    # Capture s3_key before DB deletion
+    s3_key = item.s3_key
         
     db.delete(item)
-    db.commit()
+    db.commit() # Commit DB first
+
+    # Delete from S3 ONLY after successful DB commit
+    if s3_key:
+        storage.delete_object(s3_key)
     
     return None

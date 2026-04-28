@@ -68,7 +68,7 @@ async def verify_token(token: str):
             logger.error(f"Auth Error: Invalid kid. Found kid: {kid}, Available kids: {[k['kid'] for k in jwks]}")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid kid",
+                detail="Invalid token signature (kid mismatch)",
             )
 
         payload = jwt.decode(

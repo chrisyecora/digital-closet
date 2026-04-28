@@ -77,6 +77,7 @@ class Photo(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     s3_key = Column(String)
+    file_hash = Column(String, index=True)
     status = Column(Enum(PhotoStatus, native_enum=False), default=PhotoStatus.AWAITING_UPLOAD)
     taken_at = Column(DateTime(timezone=True), server_default=func.now())
     processed_at = Column(DateTime(timezone=True))

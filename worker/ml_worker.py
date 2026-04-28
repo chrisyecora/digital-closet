@@ -399,6 +399,8 @@ class Worker:
                         sub_category=predicted_subcat,
                         color=predicted_color,
                         s3_key=crop_s3_key,
+                        worn_count=1,
+                        last_worn_at=func.now(),
                         embedding=embedding_vector
                     )
                     db.add(item)
