@@ -18,12 +18,14 @@ export async function apiRequest<T>(
 
   try {
     const fullUrl = `${API_URL}${path}`;
-    console.log(`[API Request] ${options.method || "GET"} ${fullUrl}`);
-    console.log("[API Headers]", Object.fromEntries(headers.entries()));
-    if (options.body instanceof FormData) {
-      console.log("[API Body] FormData: <FormData Object>");
-    } else if (options.body) {
-      console.log("[API Body]", options.body);
+    if (__DEV__) {
+      console.log(`[API Request] ${options.method || "GET"} ${fullUrl}`);
+      console.log("[API Headers]", Object.fromEntries(headers.entries()));
+      if (options.body instanceof FormData) {
+        console.log("[API Body] FormData: <FormData Object>");
+      } else if (options.body) {
+        console.log("[API Body]", options.body);
+      }
     }
 
     try {
@@ -32,11 +34,15 @@ export async function apiRequest<T>(
         headers,
       });
 
-      console.log(`[API Response] ${response.status} ${response.statusText}`);
+      if (__DEV__) {
+        console.log(`[API Response] ${response.status} ${response.statusText}`);
+      }
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`[API Error Body]`, errorText);
+        if (__DEV__) {
+          console.error(`[API Error Body]`, errorText);
+        }
         try {
           const errorBody = JSON.parse(errorText);
           throw new Error(errorBody.detail || `API request failed with status ${response.status}`);

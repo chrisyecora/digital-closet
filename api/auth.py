@@ -1,6 +1,7 @@
 import os
 import time
 import httpx
+import logging
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, jwk, JWTError
@@ -10,6 +11,10 @@ from db_models import User, Closet
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 CLERK_JWKS_URL = os.getenv("CLERK_JWKS_URL")
 ALGORITHMS = ["RS256"]
@@ -40,7 +45,7 @@ async def verify_token(token: str):
         unverified_header = jwt.get_unverified_header(token)
         kid = unverified_header.get("kid")
         if not kid:
-            print("Auth Error: Missing kid in token header")
+            logger.error("Auth Error: Missing kid in token header")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Missing kid in token header",
@@ -60,7 +65,7 @@ async def verify_token(token: str):
                 break
         
         if not rsa_key:
-            print(f"Auth Error: Invalid kid. Found kid: {kid}, Available kids: {[k['kid'] for k in jwks]}")
+            logger.error(f"Auth Error: Invalid kid. Found kid: {kid}, Available kids: {[k['kid'] for k in jwks]}")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid kid",
@@ -74,7 +79,7 @@ async def verify_token(token: str):
         )
         return payload
     except JWTError as e:
-        print(f"Auth Error: JWTError: {str(e)}")
+        logger.error(f"Auth Error: JWTError: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Could not validate credentials: {str(e)}",
@@ -82,7 +87,7 @@ async def verify_token(token: str):
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Auth Error: Exception: {str(e)}")
+        logger.error(f"Auth Error: Exception: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Internal server error during token verification: {str(e)}",
@@ -97,17 +102,17 @@ async def get_current_user(
     Creates a user record and a closet if they don't exist.
     """
     token = credentials.credentials
-    print(f"DEBUG: Token starts with: {token[:10]}...")
+    logger.debug(f"Token starts with: {token[:10]}...")
     payload = await verify_token(token)
     
     clerk_user_id = payload.get("sub")
     # Clerk tokens often do not include 'email' by default unless specifically configured in the Clerk dashboard.
     # We will use a placeholder or empty string if it's missing, as the primary identifier is 'sub'.
     email = payload.get("email") or ""
-    print(f"DEBUG: Decoded payload sub: {clerk_user_id}, email: {email}")
+    logger.debug(f"Decoded payload sub: {clerk_user_id}, email: {email}")
     
     if not clerk_user_id:
-        print("Auth Error: Invalid token payload: missing sub")
+        logger.error("Auth Error: Invalid token payload: missing sub")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token payload: missing sub",
