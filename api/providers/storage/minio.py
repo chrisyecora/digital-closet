@@ -46,3 +46,14 @@ class MinIOStorageProvider(StorageProvider):
         except Exception as e:
             print(f"Error generating MinIO presigned download URL: {e}")
             raise
+
+    def delete_object(self, object_name: str) -> bool:
+        try:
+            self.s3_client.delete_object(
+                Bucket=self.bucket,
+                Key=object_name,
+            )
+            return True
+        except Exception as e:
+            print(f"Error deleting object from MinIO: {e}")
+            return False

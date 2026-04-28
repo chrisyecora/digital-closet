@@ -21,6 +21,8 @@ export function usePhotoUpload() {
         takenAt || new Date().toISOString()
       );
 
+      console.log(`UPLOAD URL: ${upload_url}`)
+
       // 2. Upload binary to S3
       await uploadToS3(upload_url, uri);
 

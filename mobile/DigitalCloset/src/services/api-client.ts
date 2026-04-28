@@ -45,6 +45,11 @@ export async function apiRequest<T>(
         }
       }
 
+      // If response is 204 No Content or body is empty, return null/void
+      if (response.status === 204 || response.headers.get('content-length') === '0') {
+        return null as unknown as T;
+      }
+
       return await response.json();
     } catch (fetchError) {
       console.error(`[API Fetch Failure] Failed to reach ${fullUrl}`);

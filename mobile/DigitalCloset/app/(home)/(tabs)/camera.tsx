@@ -106,7 +106,7 @@ export default function CameraScreen() {
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
-      allowsEditing: true,
+      allowsEditing: false,
       quality: 1,
     });
 
@@ -253,30 +253,16 @@ export default function CameraScreen() {
     );
   }
 
-  if (device == null) {
+  // Show the preview screen if a photo has been taken/picked,
+  // regardless of whether a camera device exists.
+  if (photo) {
     return (
-      <ThemedView style={styles.permissionContainer}>
-        <ThemedText>No camera device found</ThemedText>
-      </ThemedView>
-    );
-  }
-
-  return (
-    <View style={styles.container}>
-      <Camera
-        ref={cameraRef}
-        style={StyleSheet.absoluteFillObject}
-        device={device}
-        isActive={isFocused}
-        photo={true}
-        photoQualityBalance='speed'
-      />
-
-      {photo && (
+      <View style={styles.container}>
         <View style={StyleSheet.absoluteFill}>
           <AnimatedImage
             source={{ uri: 'path' in photo ? `file://${photo.path}` : photo.uri }}
             style={[styles.absoluteFillObject, animatedImageStyle]}
+            contentFit="contain"
           />
           <Animated.View
             style={[StyleSheet.absoluteFillObject, animatedOverlayStyle]}
@@ -337,41 +323,84 @@ export default function CameraScreen() {
             </View>
           </Animated.View>
         </View>
-      )}
+      </View>
+    );
+  }
 
-      {!photo && (
-        <SafeAreaView
-          style={[styles.overlayContainer, StyleSheet.absoluteFillObject]}
-          edges={['top', 'bottom']}
-          pointerEvents='box-none'
+  if (device == null) {
+    return (
+      <ThemedView style={styles.permissionContainer}>
+        <Ionicons name='images-outline' size={64} color={primaryColor} />
+        <ThemedText style={styles.permissionTitle}>No camera found</ThemedText>
+        <ThemedText style={styles.permissionBody}>
+          The camera is unavailable (likely because you are on a simulator).
+          You can still test the flow by picking a photo from your library.
+        </ThemedText>
+
+        <Pressable
+          style={[styles.primaryButton, { backgroundColor: primaryColor }]}
+          onPress={pickImage}
         >
-          <View style={styles.cameraTopBar}>
-            <Pressable
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                router.replace('/');
-              }}
-              style={styles.iconButton}
-            >
-              <Ionicons name='close' size={28} color='#fff' />
-            </Pressable>
-            <ThemedText style={styles.helperText}>Take a photo of your outfit today</ThemedText>
-            <View style={{ width: 44 }} />
-          </View>
+          <ThemedText style={styles.buttonText}>Pick from Library</ThemedText>
+        </Pressable>
 
-          <View style={styles.cameraBottomBar}>
-            <Pressable style={styles.libraryButton} onPress={pickImage}>
-              <Ionicons name='images-outline' size={28} color='#fff' />
-            </Pressable>
+        <Pressable
+          style={styles.secondaryButton}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            router.navigate('/');
+          }}
+        >
+          <ThemedText style={[styles.secondaryButtonText, { color: primaryColor }]}>
+            Go Back
+          </ThemedText>
+        </Pressable>
+      </ThemedView>
+    );
+  }
 
-            <Pressable style={styles.captureButtonContainer} onPress={takePicture}>
-              <View style={styles.captureButtonInner} />
-            </Pressable>
+  return (
+    <View style={styles.container}>
+      <Camera
+        ref={cameraRef}
+        style={StyleSheet.absoluteFillObject}
+        device={device}
+        isActive={isFocused}
+        photo={true}
+        photoQualityBalance='speed'
+      />
 
-            <View style={{ width: 44 }} />
-          </View>
-        </SafeAreaView>
-      )}
+      <SafeAreaView
+        style={[styles.overlayContainer, StyleSheet.absoluteFillObject]}
+        edges={['top', 'bottom']}
+        pointerEvents='box-none'
+      >
+        <View style={styles.cameraTopBar}>
+          <Pressable
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.replace('/');
+            }}
+            style={styles.iconButton}
+          >
+            <Ionicons name='close' size={28} color='#fff' />
+          </Pressable>
+          <ThemedText style={styles.helperText}>Take a photo of your outfit today</ThemedText>
+          <View style={{ width: 44 }} />
+        </View>
+
+        <View style={styles.cameraBottomBar}>
+          <Pressable style={styles.libraryButton} onPress={pickImage}>
+            <Ionicons name='images-outline' size={28} color='#fff' />
+          </Pressable>
+
+          <Pressable style={styles.captureButtonContainer} onPress={takePicture}>
+            <View style={styles.captureButtonInner} />
+          </Pressable>
+
+          <View style={{ width: 44 }} />
+        </View>
+      </SafeAreaView>
     </View>
   );
 }

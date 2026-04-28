@@ -54,3 +54,7 @@ class ItemResponse(BaseModel):
     isDormant: bool
 
     model_config = ConfigDict(from_attributes=True)
+
+class ItemDetailResponse(ItemResponse):
+    name: str
+    description: Optional[str] = None

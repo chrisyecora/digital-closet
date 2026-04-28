@@ -73,33 +73,47 @@ export default function Dashboard() {
   );
 
   const renderEmptyState = () => (
-    <View style={styles.emptyState}>
-      <View style={styles.iconStack}>
-        <View style={[styles.iconCircle, styles.iconCircleLeft, { backgroundColor: alternateColor }]}>
-          <Ionicons name="shirt-outline" size={28} color="#fff" />
+    <ScrollView 
+      contentContainerStyle={styles.emptyStateScroll}
+      refreshControl={
+        <RefreshControl 
+          refreshing={isRefetching} 
+          onRefresh={async () => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            await refetch();
+          }} 
+          tintColor={primaryColor} 
+        />
+      }
+    >
+      <View style={styles.emptyState}>
+        <View style={styles.iconStack}>
+          <View style={[styles.iconCircle, styles.iconCircleLeft, { backgroundColor: alternateColor }]}>
+            <Ionicons name="shirt-outline" size={28} color="#fff" />
+          </View>
+          <View style={[styles.iconCircle, styles.iconCircleRight, { backgroundColor: alternateColor }]}>
+            <Ionicons name="glasses-outline" size={28} color="#fff" />
+          </View>
+          <View style={[styles.iconCircle, styles.iconCircleCenter, { backgroundColor: primaryColor }]}>
+            <Ionicons name="camera-outline" size={48} color="#fff" />
+          </View>
         </View>
-        <View style={[styles.iconCircle, styles.iconCircleRight, { backgroundColor: alternateColor }]}>
-          <Ionicons name="glasses-outline" size={28} color="#fff" />
-        </View>
-        <View style={[styles.iconCircle, styles.iconCircleCenter, { backgroundColor: primaryColor }]}>
-          <Ionicons name="camera-outline" size={48} color="#fff" />
-        </View>
+        <ThemedText type="title" style={styles.emptyTitle}>Your closet is empty</ThemedText>
+        <ThemedText style={[styles.emptySubtitle, { color: secondaryText }]}>
+          Start building your digital wardrobe by snapping your first outfit photo.
+        </ThemedText>
+        <Pressable 
+          style={[styles.addButton, { backgroundColor: primaryColor }]}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            router.push('/(home)/(tabs)/camera');
+          }}
+        >
+          <Ionicons name="camera" size={20} color="#fff" style={styles.addButtonIcon} />
+          <ThemedText style={styles.addButtonText}>Snap First Outfit</ThemedText>
+        </Pressable>
       </View>
-      <ThemedText type="title" style={styles.emptyTitle}>Your closet is empty</ThemedText>
-      <ThemedText style={[styles.emptySubtitle, { color: secondaryText }]}>
-        Start building your digital wardrobe by snapping your first outfit photo.
-      </ThemedText>
-      <Pressable 
-        style={[styles.addButton, { backgroundColor: primaryColor }]}
-        onPress={() => {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          router.push('/(home)/(tabs)/camera');
-        }}
-      >
-        <Ionicons name="camera" size={20} color="#fff" style={styles.addButtonIcon} />
-        <ThemedText style={styles.addButtonText}>Snap First Outfit</ThemedText>
-      </Pressable>
-    </View>
+    </ScrollView>
   );
 
   return (
@@ -175,7 +189,14 @@ export default function Dashboard() {
               contentContainerStyle={styles.listContent}
               showsVerticalScrollIndicator={false}
               refreshControl={
-                <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={primaryColor} />
+                <RefreshControl 
+                  refreshing={isRefetching} 
+                  onRefresh={async () => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    await refetch();
+                  }} 
+                  tintColor={primaryColor} 
+                />
               }
               ListEmptyComponent={
                 <View style={styles.categoryEmptyState}>
@@ -280,6 +301,9 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: 'bold',
     textTransform: 'uppercase',
+  },
+  emptyStateScroll: {
+    flexGrow: 1,
   },
   emptyState: {
     flex: 1,
