@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Pressable, ScrollView } from 'react-native';
+import { StyleSheet, View, Pressable, ScrollView, RefreshControl, ActivityIndicator } from 'react-native';
 import { useAuth } from '@clerk/expo';
 import { useRouter } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
@@ -12,7 +12,8 @@ import Animated from 'react-native-reanimated';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useThemeColor } from '@/hooks/use-theme-color';
-import { mockItems, Category, ClosetItem } from '@/data/mockItems';
+import { Category, ClosetItem } from '@/data/mockItems';
+import { useItems } from '@/hooks/use-items';
 
 const AnimatedImage = Animated.createAnimatedComponent(Image);
 const TypedFlashList = FlashList as any;
@@ -32,12 +33,14 @@ export default function Dashboard() {
   
   const [selectedCategory, setSelectedCategory] = useState<Category | 'All'>('All');
   
+  const { data: items = [], isLoading, isRefetching, refetch } = useItems();
+
   const primaryColor = useThemeColor({}, 'primary');
   const alternateColor = useThemeColor({}, 'alternate');
   const secondaryText = useThemeColor({}, 'secondaryText');
   const errorColor = useThemeColor({}, 'error');
 
-  const filteredItems = mockItems.filter(
+  const filteredItems = items.filter(
     item => selectedCategory === 'All' || item.category === selectedCategory
   );
 
@@ -70,33 +73,47 @@ export default function Dashboard() {
   );
 
   const renderEmptyState = () => (
-    <View style={styles.emptyState}>
-      <View style={styles.iconStack}>
-        <View style={[styles.iconCircle, styles.iconCircleLeft, { backgroundColor: alternateColor }]}>
-          <Ionicons name="shirt-outline" size={28} color="#fff" />
+    <ScrollView 
+      contentContainerStyle={styles.emptyStateScroll}
+      refreshControl={
+        <RefreshControl 
+          refreshing={isRefetching} 
+          onRefresh={async () => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            await refetch();
+          }} 
+          tintColor={primaryColor} 
+        />
+      }
+    >
+      <View style={styles.emptyState}>
+        <View style={styles.iconStack}>
+          <View style={[styles.iconCircle, styles.iconCircleLeft, { backgroundColor: alternateColor }]}>
+            <Ionicons name="shirt-outline" size={28} color="#fff" />
+          </View>
+          <View style={[styles.iconCircle, styles.iconCircleRight, { backgroundColor: alternateColor }]}>
+            <Ionicons name="glasses-outline" size={28} color="#fff" />
+          </View>
+          <View style={[styles.iconCircle, styles.iconCircleCenter, { backgroundColor: primaryColor }]}>
+            <Ionicons name="camera-outline" size={48} color="#fff" />
+          </View>
         </View>
-        <View style={[styles.iconCircle, styles.iconCircleRight, { backgroundColor: alternateColor }]}>
-          <Ionicons name="glasses-outline" size={28} color="#fff" />
-        </View>
-        <View style={[styles.iconCircle, styles.iconCircleCenter, { backgroundColor: primaryColor }]}>
-          <Ionicons name="camera-outline" size={48} color="#fff" />
-        </View>
+        <ThemedText type="title" style={styles.emptyTitle}>Your closet is empty</ThemedText>
+        <ThemedText style={[styles.emptySubtitle, { color: secondaryText }]}>
+          Start building your digital wardrobe by snapping your first outfit photo.
+        </ThemedText>
+        <Pressable 
+          style={[styles.addButton, { backgroundColor: primaryColor }]}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            router.push('/(home)/(tabs)/camera');
+          }}
+        >
+          <Ionicons name="camera" size={20} color="#fff" style={styles.addButtonIcon} />
+          <ThemedText style={styles.addButtonText}>Snap First Outfit</ThemedText>
+        </Pressable>
       </View>
-      <ThemedText type="title" style={styles.emptyTitle}>Your closet is empty</ThemedText>
-      <ThemedText style={[styles.emptySubtitle, { color: secondaryText }]}>
-        Start building your digital wardrobe by snapping your first outfit photo.
-      </ThemedText>
-      <Pressable 
-        style={[styles.addButton, { backgroundColor: primaryColor }]}
-        onPress={() => {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          router.push('/(home)/(tabs)/camera');
-        }}
-      >
-        <Ionicons name="camera" size={20} color="#fff" style={styles.addButtonIcon} />
-        <ThemedText style={styles.addButtonText}>Snap First Outfit</ThemedText>
-      </Pressable>
-    </View>
+    </ScrollView>
   );
 
   return (
@@ -106,7 +123,7 @@ export default function Dashboard() {
           <View>
             <ThemedText type="title">Closet</ThemedText>
             <ThemedText style={[styles.headerSubtitle, { color: secondaryText }]}>
-              {mockItems.length} items
+              {items.length} items
             </ThemedText>
           </View>
           <Pressable 
@@ -120,7 +137,7 @@ export default function Dashboard() {
           </Pressable>
         </View>
 
-        {mockItems.length > 0 && (
+        {items.length > 0 && (
           <View style={styles.filtersContainer}>
             <ScrollView 
               horizontal 
@@ -157,7 +174,11 @@ export default function Dashboard() {
         )}
 
         <View style={styles.listContainer}>
-          {mockItems.length === 0 ? (
+          {isLoading ? (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+              <ActivityIndicator size="large" color={primaryColor} />
+            </View>
+          ) : items.length === 0 ? (
             renderEmptyState()
           ) : (
             <TypedFlashList
@@ -167,6 +188,16 @@ export default function Dashboard() {
               numColumns={2}
               contentContainerStyle={styles.listContent}
               showsVerticalScrollIndicator={false}
+              refreshControl={
+                <RefreshControl 
+                  refreshing={isRefetching} 
+                  onRefresh={async () => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    await refetch();
+                  }} 
+                  tintColor={primaryColor} 
+                />
+              }
               ListEmptyComponent={
                 <View style={styles.categoryEmptyState}>
                   <ThemedText style={styles.categoryEmptyText}>No items found in this category</ThemedText>
@@ -176,7 +207,7 @@ export default function Dashboard() {
           )}
         </View>
 
-        {mockItems.length > 0 && (
+        {items.length > 0 && (
           <Pressable 
             style={[styles.fab, { backgroundColor: primaryColor }]}
             onPress={() => {
@@ -270,6 +301,9 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: 'bold',
     textTransform: 'uppercase',
+  },
+  emptyStateScroll: {
+    flexGrow: 1,
   },
   emptyState: {
     flex: 1,

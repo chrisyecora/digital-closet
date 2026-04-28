@@ -6,7 +6,6 @@ import { Pressable, StyleSheet, TextInput, View, ActivityIndicator, Platform } f
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { Ionicons } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
-import * as Notifications from 'expo-notifications';
 import * as Haptics from 'expo-haptics';
 
 interface AuthFormProps {
@@ -58,6 +57,12 @@ export function AuthForm({ isSignIn }: AuthFormProps) {
   const [code, setCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [forceShowForm, setForceShowForm] = useState(false);
+
+  // Reset forceShowForm if we switch between Sign In and Sign Up
+  useEffect(() => {
+    setForceShowForm(false);
+  }, [isSignIn]);
 
   const primaryColor = useThemeColor({}, 'primary');
   const textColor = useThemeColor({}, 'text');
@@ -66,31 +71,35 @@ export function AuthForm({ isSignIn }: AuthFormProps) {
   const errorColor = useThemeColor({}, 'error');
   const alternateColor = useThemeColor({}, 'alternate');
 
-  const onAuthSuccess = useCallback(async (sessionId: string) => {
-    if (clerk.setActive) {
-      try {
-//         const { status: cameraStatus } = await Camera.Camera.getCameraPermissionsAsync();
-        const { status: notifStatus } = await Notifications.getPermissionsAsync();
+  const onAuthSuccess = useCallback(
+    async (sessionId: string) => {
+      if (clerk.setActive) {
+        try {
+          //         const { status: cameraStatus } = await Camera.Camera.getCameraPermissionsAsync();
+          const { status: notifStatus } = await Notifications.getPermissionsAsync();
 
-        // If either permission is undetermined (we haven't asked), show permissions screen
-        if (notifStatus === 'undetermined') {
-          router.replace('/(auth)/permissions');
-        } else {
-          // Already asked for both, go to home
+          // If either permission is undetermined (we haven't asked), show permissions screen
+          if (notifStatus === 'undetermined') {
+            router.replace('/(auth)/permissions');
+          } else {
+            // Already asked for both, go to home
+            router.replace('/');
+          }
+        } catch (error) {
+          console.error('Error checking permissions:', error);
           router.replace('/');
+        } finally {
+          await clerk.setActive({ session: sessionId });
         }
-      } catch (error) {
-        console.error('Error checking permissions:', error);
-        router.replace('/');
-      } finally {
-        await clerk.setActive({ session: sessionId });
       }
-    }
-  }, [router, clerk]);
+    },
+    [router, clerk],
+  );
 
   const handleOAuth = async (strategy: 'google' | 'apple') => {
     setIsLoading(true);
     setError(null);
+    setForceShowForm(false);
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       const startFlow = strategy === 'google' ? startGoogleOAuthFlow : startAppleOAuthFlow;
@@ -112,6 +121,7 @@ export function AuthForm({ isSignIn }: AuthFormProps) {
     if (!signIn) return;
     setIsLoading(true);
     setError(null);
+    setForceShowForm(false);
     try {
       const { error: signInError } = await signIn.password({
         identifier: emailAddress,
@@ -127,7 +137,10 @@ export function AuthForm({ isSignIn }: AuthFormProps) {
       if (signIn.status === 'complete') {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         if (signIn.createdSessionId) await onAuthSuccess(signIn.createdSessionId);
-      } else if (signIn.status === 'needs_second_factor' || signIn.status === 'needs_client_trust') {
+      } else if (
+        signIn.status === 'needs_second_factor' ||
+        signIn.status === 'needs_client_trust'
+      ) {
         const { error: sendError } = await signIn.mfa.sendEmailCode();
         if (sendError) {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -177,6 +190,7 @@ export function AuthForm({ isSignIn }: AuthFormProps) {
     if (!signUp) return;
     setIsLoading(true);
     setError(null);
+    setForceShowForm(false);
     try {
       const { error: signUpError } = await signUp.password({
         emailAddress,
@@ -264,10 +278,19 @@ export function AuthForm({ isSignIn }: AuthFormProps) {
     }
   };
 
-  const isVerifying = isSignIn
+  const handleBack = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setError(null);
+    setCode('');
+    setEmailAddress('');
+    setPassword('');
+    setForceShowForm(true);
+  };
+
+  const isVerifying = (isSignIn
     ? signIn?.status === 'needs_client_trust' || signIn?.status === 'needs_second_factor'
     : signUp?.status === 'missing_requirements' &&
-      signUp?.unverifiedFields.includes('email_address');
+      signUp?.unverifiedFields.includes('email_address')) && !forceShowForm;
 
   if (isVerifying) {
     return (
@@ -289,9 +312,7 @@ export function AuthForm({ isSignIn }: AuthFormProps) {
             onSubmitEditing={handleVerify}
           />
           {error && (
-            <ThemedText style={[styles.errorText, { color: errorColor }]}>
-              {error}
-            </ThemedText>
+            <ThemedText style={[styles.errorText, { color: errorColor }]}>{error}</ThemedText>
           )}
         </View>
 
@@ -312,14 +333,26 @@ export function AuthForm({ isSignIn }: AuthFormProps) {
               <ThemedText style={styles.buttonText}>Verify</ThemedText>
             )}
           </Pressable>
-          <Pressable
-            style={({ pressed }) => [styles.secondaryButton, pressed && styles.buttonPressed]}
-            onPress={handleResend}
-          >
-            <ThemedText style={[styles.secondaryButtonText, { color: actionText }]}>
-              Resend code
-            </ThemedText>
-          </Pressable>
+
+          <View style={styles.verificationActions}>
+            <Pressable
+              style={({ pressed }) => [styles.secondaryButton, pressed && styles.buttonPressed]}
+              onPress={handleResend}
+            >
+              <ThemedText style={[styles.secondaryButtonText, { color: actionText }]}>
+                Resend code
+              </ThemedText>
+            </Pressable>
+
+            <Pressable
+              style={({ pressed }) => [styles.secondaryButton, pressed && styles.buttonPressed]}
+              onPress={handleBack}
+            >
+              <ThemedText style={[styles.secondaryButtonText, { color: secondaryText }]}>
+                Back to {isSignIn ? 'Login' : 'Sign Up'}
+              </ThemedText>
+            </Pressable>
+          </View>
         </View>
       </View>
     );
@@ -346,9 +379,7 @@ export function AuthForm({ isSignIn }: AuthFormProps) {
           blurOnSubmit={false}
         />
         {error && (
-          <ThemedText style={[styles.errorText, { color: errorColor }]}>
-            {error}
-          </ThemedText>
+          <ThemedText style={[styles.errorText, { color: errorColor }]}>{error}</ThemedText>
         )}
       </View>
 
@@ -487,6 +518,12 @@ const styles = StyleSheet.create({
   secondaryButtonText: {
     fontWeight: '600',
     fontSize: 15,
+  },
+  verificationActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8,
   },
   errorText: {
     fontSize: 13,

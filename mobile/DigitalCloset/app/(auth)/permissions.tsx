@@ -6,7 +6,6 @@ import { ThemedView } from '@/components/themed-view';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { useRouter } from 'expo-router';
 // import * as Camera from 'expo-camera';
-import * as Notifications from 'expo-notifications';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 
@@ -14,7 +13,6 @@ export default function PermissionsScreen() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   // const [cameraStatus, setCameraStatus] = useState<string | null>(null);
-  const [notificationStatus, setNotificationStatus] = useState<string | null>(null);
 
   const primaryColor = useThemeColor({}, 'primary');
   const secondaryText = useThemeColor({}, 'secondaryText');
@@ -26,9 +24,6 @@ export default function PermissionsScreen() {
     try {
       // const { status: camStatus } = await Camera.Camera.requestCameraPermissionsAsync();
       // setCameraStatus(camStatus);
-
-      const { status: notifStatus } = await Notifications.requestPermissionsAsync();
-      setNotificationStatus(notifStatus);
 
       // Even if they deny, we continue to the app
       router.replace('/');
@@ -45,33 +40,21 @@ export default function PermissionsScreen() {
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.content}>
           <View style={styles.header}>
-            <ThemedText type="title" style={styles.title}>Permissions</ThemedText>
+            <ThemedText type="title" style={styles.title}>Welcome</ThemedText>
             <ThemedText style={[styles.subtitle, { color: secondaryText }]}>
-              To give you the best experience, we need a few permissions.
+              Ready to digitize your closet?
             </ThemedText>
           </View>
 
           <View style={styles.permissionList}>
-            {/* <View style={[styles.permissionItem, { borderColor: alternateColor }]}>
+            <View style={[styles.permissionItem, { borderColor: alternateColor }]}>
               <View style={[styles.iconContainer, { backgroundColor: alternateColor }]}>
                 <Ionicons name="camera" size={24} color={primaryColor} />
               </View>
               <View style={styles.permissionText}>
                 <ThemedText type="defaultSemiBold">Camera</ThemedText>
                 <ThemedText style={[styles.description, { color: secondaryText }]}>
-                  Used to snap photos of your outfits and identify clothing items.
-                </ThemedText>
-              </View>
-            </View> */}
-
-            <View style={[styles.permissionItem, { borderColor: alternateColor }]}>
-              <View style={[styles.iconContainer, { backgroundColor: alternateColor }]}>
-                <Ionicons name="notifications" size={24} color={primaryColor} />
-              </View>
-              <View style={styles.permissionText}>
-                <ThemedText type="defaultSemiBold">Notifications</ThemedText>
-                <ThemedText style={[styles.description, { color: secondaryText }]}>
-                  Alerts you when your outfit photos have been processed.
+                  Used to snap photos of your outfits and identify clothing items. You'll be asked for this permission later.
                 </ThemedText>
               </View>
             </View>

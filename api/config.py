@@ -11,12 +11,12 @@ class Settings(BaseSettings):
     aws_default_region: str = "us-east-1"
     
     # MinIO Specific (Local)
-    minio_endpoint: str = "http://localhost:9000"
+    minio_endpoint: str = "http://127.0.0.1:9000"
     storage_bucket: str = "digital-closet-local"
     
     # SQS / ElasticMQ Specific
-    sqs_endpoint: str = "http://localhost:9324"
-    sqs_queue_url: str = "http://localhost:9324/000000000000/photo-uploads"
+    sqs_endpoint: str = "http://127.0.0.1:9324"
+    sqs_queue_url: str = "http://127.0.0.1:9324/000000000000/photo-uploads"
 
     model_config = SettingsConfigDict(env_file="../.env", env_file_encoding="utf-8", extra="ignore")
 

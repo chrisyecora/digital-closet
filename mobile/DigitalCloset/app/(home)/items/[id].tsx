@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { StyleSheet, View, ScrollView, Pressable, TextInput } from 'react-native';
+import { StyleSheet, View, ScrollView, Pressable, TextInput, ActivityIndicator, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,7 +10,7 @@ import Animated from 'react-native-reanimated';
 
 import { ThemedText } from '@/components/themed-text';
 import { useThemeColor } from '@/hooks/use-theme-color';
-import { mockItems, ClosetItem } from '@/data/mockItems';
+import { useItemDetail, useDeleteItem } from '@/hooks/use-items';
 
 const AnimatedImage = Animated.createAnimatedComponent(Image);
 
@@ -22,9 +22,16 @@ export default function ItemDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  const [item, setItem] = useState<ClosetItem | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: item, isLoading, error } = useItemDetail(id);
+  const { mutateAsync: deleteItem, isPending: isDeleting } = useDeleteItem();
   const [itemName, setItemName] = useState('');
+
+  // Update itemName when data is loaded
+  useEffect(() => {
+    if (item) {
+      setItemName(item.name || item.category);
+    }
+  }, [item]);
 
   // Colors
   const textColor = useThemeColor({}, 'text');
@@ -34,7 +41,7 @@ export default function ItemDetailScreen() {
   const errorColor = useThemeColor({}, 'error');
   const cardColor = useThemeColor({}, 'secondary');
 
-  const isDarkMode = backgroundColor === '#1A1918'; // based on theme.ts dark bg
+  const isDarkMode = backgroundColor === '#1A1918';
   const skeletonColor = isDarkMode ? SKELETON_BG_DARK : SKELETON_BG_LIGHT;
 
   // Bottom Sheet Ref
@@ -50,23 +57,6 @@ export default function ItemDetailScreen() {
     bottomSheetModalRef.current?.dismiss();
   }, []);
 
-  useEffect(() => {
-    // Simulate API fetch
-    const fetchItem = async () => {
-      setLoading(true);
-      setTimeout(() => {
-        const foundItem = mockItems.find((i) => i.id === id);
-        if (foundItem) {
-          setItem(foundItem);
-          setItemName(foundItem.name || foundItem.category);
-        }
-        setLoading(false);
-      }, 500);
-    };
-
-    fetchItem();
-  }, [id]);
-
   const handleGoBack = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (router.canGoBack()) {
@@ -76,21 +66,24 @@ export default function ItemDetailScreen() {
     }
   };
 
-  const handleConfirmDelete = () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    handleCloseModalPress();
-    // In a real app, delete API call here
-    setTimeout(() => {
+  const handleConfirmDelete = async () => {
+    try {
+      await deleteItem(id);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      handleCloseModalPress();
       router.back();
-    }, 300);
+    } catch (err) {
+      console.error('Failed to delete item:', err);
+      Alert.alert('Error', 'Failed to delete item. Please try again.');
+    }
   };
 
-  const formatDate = (isoString: string) => {
+  const formatDate = (isoString: string | Date) => {
     const date = new Date(isoString);
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <View style={[styles.container, { backgroundColor }]}>
         <View style={[styles.imageSkeleton, { backgroundColor: skeletonColor }]} />
@@ -99,12 +92,8 @@ export default function ItemDetailScreen() {
           <View style={styles.tagsContainer}>
             <View style={[styles.tagSkeleton, { backgroundColor: skeletonColor }]} />
             <View style={[styles.tagSkeleton, { backgroundColor: skeletonColor }]} />
-            <View style={[styles.tagSkeleton, { backgroundColor: skeletonColor }]} />
           </View>
           <View style={[styles.statsSkeleton, { backgroundColor: skeletonColor }]} />
-
-          <View style={[styles.sectionTitleSkeleton, { backgroundColor: skeletonColor }]} />
-          <View style={[styles.historySkeleton, { backgroundColor: skeletonColor }]} />
         </View>
         <Pressable style={[styles.backButton, { top: insets.top + 10 }]} onPress={handleGoBack}>
           <View style={styles.backButtonBg}>
@@ -115,7 +104,7 @@ export default function ItemDetailScreen() {
     );
   }
 
-  if (!item) {
+  if (error || !item) {
     return (
       <View style={[styles.centered, { backgroundColor }]}>
         <ThemedText>Item not found.</ThemedText>
@@ -125,8 +114,6 @@ export default function ItemDetailScreen() {
       </View>
     );
   }
-
-  const wornWithItems = mockItems.filter((i) => item.wornWith.includes(i.id));
 
   return (
     <View style={[styles.container, { backgroundColor }]}>
@@ -200,67 +187,6 @@ export default function ItemDetailScreen() {
             </View>
           </View>
 
-          {/* Outfit History */}
-          <View style={styles.section}>
-            <ThemedText type='subtitle' style={styles.sectionTitle}>
-              Outfit History
-            </ThemedText>
-            {item.outfitHistory.length > 0 ? (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                {item.outfitHistory.map((outfit) => (
-                  <View key={outfit.id} style={styles.historyItem}>
-                    <Image source={{ uri: outfit.imageUrl }} style={styles.historyImage} />
-                    <ThemedText style={[styles.historyDate, { color: secondaryText }]}>
-                      {formatDate(outfit.date)}
-                    </ThemedText>
-                  </View>
-                ))}
-              </ScrollView>
-            ) : (
-              <View style={[styles.emptyState, { backgroundColor: cardColor }]}>
-                <ThemedText style={{ color: secondaryText, textAlign: 'center' }}>
-                  This item hasn&apos;t been worn yet.
-                </ThemedText>
-              </View>
-            )}
-          </View>
-
-          {/* Worn With */}
-          <View style={styles.section}>
-            <ThemedText type='subtitle' style={styles.sectionTitle}>
-              Worn With
-            </ThemedText>
-            {wornWithItems.length > 0 ? (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                {wornWithItems.map((relatedItem) => (
-                  <Pressable
-                    key={relatedItem.id}
-                    style={styles.relatedItem}
-                    onPress={() => {
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      router.push(`/(home)/items/${relatedItem.id}`);
-                    }}
-                  >
-                    <AnimatedImage 
-                      source={{ uri: relatedItem.imageUrl }} 
-                      style={styles.relatedImage} 
-                      sharedTransitionTag={`item-image-${relatedItem.id}`}
-                    />
-                    <ThemedText numberOfLines={1} style={styles.relatedName}>
-                      {relatedItem.name || relatedItem.category}
-                    </ThemedText>
-                  </Pressable>
-                ))}
-              </ScrollView>
-            ) : (
-              <View style={[styles.emptyState, { backgroundColor: cardColor }]}>
-                <ThemedText style={{ color: secondaryText, textAlign: 'center' }}>
-                  Wear this item a few more times to see patterns.
-                </ThemedText>
-              </View>
-            )}
-          </View>
-
           {/* Action Buttons */}
           <View style={styles.actionsContainer}>
             <Pressable
@@ -324,10 +250,15 @@ export default function ItemDetailScreen() {
               <ThemedText style={styles.sheetButtonText}>Cancel</ThemedText>
             </Pressable>
             <Pressable
-              style={[styles.sheetButton, { backgroundColor: errorColor }]}
+              style={[styles.sheetButton, { backgroundColor: errorColor }, isDeleting && { opacity: 0.7 }]}
               onPress={handleConfirmDelete}
+              disabled={isDeleting}
             >
-              <ThemedText style={[styles.sheetButtonText, { color: '#FFF' }]}>Delete</ThemedText>
+              {isDeleting ? (
+                <ActivityIndicator color="#FFF" />
+              ) : (
+                <ThemedText style={[styles.sheetButtonText, { color: '#FFF' }]}>Delete</ThemedText>
+              )}
             </Pressable>
           </View>
         </BottomSheetView>

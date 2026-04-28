@@ -7,7 +7,6 @@ import { useThemeColor } from '@/hooks/use-theme-color';
 
 export default function TabsLayout() {
   const primaryColor = useThemeColor({}, 'primary');
-  const backgroundColor = useThemeColor({}, 'background');
   const tabIconDefault = useThemeColor({}, 'tabIconDefault');
 
   const hapticTab = () => {

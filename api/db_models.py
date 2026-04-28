@@ -62,13 +62,14 @@ class ClothingItem(Base):
     category = Column(Enum(ItemCategory, native_enum=False))
     sub_category = Column(String)
     color = Column(String)
-    worn_count = Column(Integer, default=0)
+    s3_key = Column(String) # Path to the cropped item image
+    worn_count = Column(Integer, default=1)
     last_worn_at = Column(DateTime(timezone=True))
     embedding = Column(Vector(512))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     closet = relationship("Closet", back_populates="items")
-    matches = relationship("ItemMatch", foreign_keys="ItemMatch.clothing_item_id", back_populates="clothing_item")
+    matches = relationship("ItemMatch", foreign_keys="ItemMatch.clothing_item_id", back_populates="clothing_item", cascade="all, delete-orphan")
 
 class Photo(Base):
     __tablename__ = "photos"
@@ -76,6 +77,7 @@ class Photo(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     s3_key = Column(String)
+    file_hash = Column(String, index=True)
     status = Column(Enum(PhotoStatus, native_enum=False), default=PhotoStatus.AWAITING_UPLOAD)
     taken_at = Column(DateTime(timezone=True), server_default=func.now())
     processed_at = Column(DateTime(timezone=True))
@@ -87,12 +89,12 @@ class ItemMatch(Base):
     __tablename__ = "item_matches"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    photo_id = Column(UUID(as_uuid=True), ForeignKey("photos.id"), nullable=False)
-    clothing_item_id = Column(UUID(as_uuid=True), ForeignKey("clothing_items.id"), nullable=False)
+    photo_id = Column(UUID(as_uuid=True), ForeignKey("photos.id", ondelete="CASCADE"), nullable=False)
+    clothing_item_id = Column(UUID(as_uuid=True), ForeignKey("clothing_items.id", ondelete="CASCADE"), nullable=False)
     confidence_score = Column(Float)
     was_confirmed = Column(Boolean, default=False)
     was_corrected = Column(Boolean, default=False)
-    correct_item_id = Column(UUID(as_uuid=True), ForeignKey("clothing_items.id"))
+    correct_item_id = Column(UUID(as_uuid=True), ForeignKey("clothing_items.id", ondelete="SET NULL"))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     photo = relationship("Photo", back_populates="matches")

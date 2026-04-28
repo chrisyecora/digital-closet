@@ -77,9 +77,9 @@ async def test_full_upload_and_process_pipeline():
         assert response.status_code == 201
         data = response.json()
         assert "id" in data
-        assert "upload_url" in data
+        assert "uploadUrl" in data # Test camelCase refactor
         photo_id = data["id"]
-        upload_url = data["upload_url"]
+        upload_url = data["uploadUrl"]
 
         # 2. Upload test HEIC image to MinIO
         img_path = os.path.join(os.path.dirname(__file__), "assets", "test_image.HEIC")
@@ -99,7 +99,6 @@ async def test_full_upload_and_process_pipeline():
 
     # 4. Run the ML Worker synchronously
     print("Running ML Worker on local queue...")
-    # NOTE: In local testing this requires Docker (MinIO, Postgres, ElasticMQ) to be running.
     try:
         worker = Worker()
         # Set WaitTimeSeconds to 1 so the test doesn't hang long
@@ -118,6 +117,11 @@ async def test_full_upload_and_process_pipeline():
     matches = db.query(ItemMatch).filter(ItemMatch.photo_id == photo_id).all()
     assert len(matches) == 3, f"Expected 3 items identified, got {len(matches)}"
     
+    # Verify s3_key is populated for all items
+    for match in matches:
+        assert match.clothing_item.s3_key is not None, f"Item {match.clothing_item_id} missing s3_key"
+        assert match.clothing_item.s3_key.startswith(f"user/{photo.user.clerk_user_id}/crops/"), f"Invalid s3_key: {match.clothing_item.s3_key}"
+    
     # Check that there are no duplicate categories
     categories = [match.clothing_item.category.value for match in matches]
     assert len(set(categories)) == 3, f"Expected unique categories, got {categories}"
@@ -132,7 +136,7 @@ async def test_full_upload_and_process_pipeline():
         assert response2.status_code == 201
         data2 = response2.json()
         photo_id2 = data2["id"]
-        upload_url2 = data2["upload_url"]
+        upload_url2 = data2["uploadUrl"]
 
         # Upload test HEIC image to MinIO again
         async with httpx.AsyncClient() as s3_client:
@@ -159,7 +163,6 @@ async def test_full_upload_and_process_pipeline():
     assert photo2.status == PhotoStatus.PROCESSED
     
     # Total ClothingItems for this user should remain 3
-    # Wait, getting user from photo
     user_id = photo.user_id
     from db_models import ClothingItem
     items_count = db.query(ClothingItem).join(Closet).filter(Closet.user_id == user_id).count()
@@ -176,21 +179,59 @@ async def test_full_upload_and_process_pipeline():
     db.close()
 
 @pytest.mark.asyncio
-async def test_dry_run_image_matching():
+async def test_photo_idempotency_with_hash():
     """
-    Test that uploads an image to the pipeline specifically to test the dry run
-    reporting capabilities, validating it prints exactly what was identified, 
-    what was matched, and what actions would have been taken (e.g., creating 
-    vs incrementing worn_count).
+    Test that uploading the same photo with the same hash returns the same Photo record.
     """
-    # Create fresh UUID for the new test context
-    override_get_current_user.clerk_id = f"test_clerk_{uuid.uuid4()}"
+    # Unique user for this test
+    override_get_current_user.clerk_id = f"test_clerk_idemp_{uuid.uuid4()}"
+    file_hash = "fake_hash_12345"
     
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
-        # First upload (Baseline to populate some items)
+        # 1. Create first photo record with hash
+        resp1 = await client.post("/photos", json={
+            "taken_at": "2024-01-01T12:00:00Z",
+            "file_hash": file_hash
+        })
+        assert resp1.status_code == 201
+        data1 = resp1.json()
+        photo_id1 = data1["id"]
+        
+        # 2. Create second photo record with SAME hash
+        resp2 = await client.post("/photos", json={
+            "taken_at": "2024-01-02T12:00:00Z", # Different taken_at
+            "file_hash": file_hash
+        })
+        assert resp2.status_code == 201 # Still 201 per logic, but same ID
+        data2 = resp2.json()
+        photo_id2 = data2["id"]
+        
+        assert photo_id1 == photo_id2, "Idempotency failed: different photo IDs for same hash"
+        
+        # 3. Create third photo record with DIFFERENT hash
+        resp3 = await client.post("/photos", json={
+            "taken_at": "2024-01-01T12:00:00Z",
+            "file_hash": "different_hash"
+        })
+        assert resp3.status_code == 201
+        data3 = resp3.json()
+        photo_id3 = data3["id"]
+        
+        assert photo_id1 != photo_id3, "Idempotency failed: same photo ID for different hashes"
+
+@pytest.mark.asyncio
+async def test_dry_run_image_matching():
+    """
+    Test dry run rollback.
+    """
+    # Create fresh UUID for the new test context
+    override_get_current_user.clerk_id = f"test_clerk_dry_{uuid.uuid4()}"
+    
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        # First upload (Baseline)
         response1 = await client.post("/photos", json={"taken_at": "2024-01-01T12:00:00Z"})
         data1 = response1.json()
-        photo_id1, upload_url1 = data1["id"], data1["upload_url"]
+        photo_id1, upload_url1 = data1["id"], data1["uploadUrl"]
 
         img_path = os.path.join(os.path.dirname(__file__), "assets", "test_image.HEIC")
         with open(img_path, "rb") as f:
@@ -203,13 +244,12 @@ async def test_dry_run_image_matching():
 
         worker = Worker()
         worker.sqs.receive_message = lambda **kwargs: worker.sqs._make_api_call("ReceiveMessage", {**kwargs, "WaitTimeSeconds": 1})
-        # Process the first image, committing to DB
         worker.run(once=True)
 
         # Second upload (Dry Run)
         response2 = await client.post("/photos", json={"taken_at": "2024-01-01T12:00:00Z"})
         data2 = response2.json()
-        photo_id2, upload_url2 = data2["id"], data2["upload_url"]
+        photo_id2, upload_url2 = data2["id"], data2["uploadUrl"]
 
         img2_path = os.path.join(os.path.dirname(__file__), "assets", "test_image_2.HEIC")
         with open(img2_path, "rb") as f:
@@ -220,39 +260,15 @@ async def test_dry_run_image_matching():
 
         await client.post(f"/photos/{photo_id2}/confirm")
         
-        print("\n\n" + "="*50)
-        print("EXECUTING DRY RUN PIPELINE TEST WITH DIFFERENT IMAGE")
-        print("="*50)
-        
-        # Run worker in dry run mode and capture the reports
+        # Run worker in dry run mode
         reports = worker.run(once=True, dry_run=True)
-        assert len(reports) > 0, "No reports generated by worker"
-        report = reports[0]
-        
-        print("\n1. CLOTHING ITEMS IDENTIFIED:")
-        for item in report["identified_items"]:
-            print(f"   - Category: {item['category']} (Confidence: {item['confidence']:.2f})")
-            if 'name' in item:
-                print(f"     > Classified as: {item['name']} (Color: {item['color']}, Sub-category: {item['sub_category']})")
-            print(f"     > Crop saved: {item.get('crop_path')}")
-            
-        print("\n2. SIMILAR ITEMS FOUND IN DATABASE:")
-        for item in report["similar_items"]:
-            print(f"   - Category: {item['category']} (Match Distance: {item['distance']:.4f}) -> ID: {item['item_id']}")
-            
-        print("\n3. ACTIONS THAT WOULD BE TAKEN:")
-        for action in report["actions"]:
-            print(f"   - {action}")
-            
-        print("="*50 + "\n")
+        assert len(reports) > 0
 
         # Verify it actually rolled back
         db = SessionLocal()
         photo2 = db.query(Photo).filter(Photo.id == photo_id2).first()
-        # Photo status is PROCESSED in memory, but in DB it should be PENDING_PROCESSING because it rolled back!
         assert photo2.status == PhotoStatus.PENDING_PROCESSING
         
-        # Confirm no extra items were created
         from db_models import ClothingItem
         items_count = db.query(ClothingItem).join(Closet).filter(Closet.user_id == photo2.user_id).count()
         assert items_count == 3, f"Expected 3 items in DB, but got {items_count}. Rollback failed!"

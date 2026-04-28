@@ -19,7 +19,21 @@ async def create_photo(
 ):
     """
     Creates a Photo record and returns a presigned URL for upload.
+    Checks for idempotency using file_hash if provided.
     """
+    # Idempotency check: if file_hash exists for this user, return the existing photo
+    if photo_in.file_hash:
+        existing_photo = db.query(Photo).filter(
+            Photo.user_id == current_user.id,
+            Photo.file_hash == photo_in.file_hash
+        ).first()
+        
+        if existing_photo:
+            return {
+                "id": existing_photo.id,
+                "upload_url": storage.generate_presigned_upload_url(existing_photo.s3_key)
+            }
+
     photo_id = uuid.uuid4()
     s3_key = f"user/{current_user.clerk_user_id}/{photo_id}.jpg"
     
@@ -30,6 +44,7 @@ async def create_photo(
         id=photo_id,
         user_id=current_user.id,
         s3_key=s3_key,
+        file_hash=photo_in.file_hash,
         status=PhotoStatus.AWAITING_UPLOAD,
         taken_at=photo_in.taken_at
     )
@@ -59,7 +74,8 @@ async def confirm_photo_upload(
         raise HTTPException(status_code=404, detail="Photo not found")
         
     if photo.status != PhotoStatus.AWAITING_UPLOAD:
-        raise HTTPException(status_code=400, detail="Photo is not awaiting upload")
+        # If it's already processed or pending, just return it (idempotent confirm)
+        return photo
         
     # Update status
     photo.status = PhotoStatus.PENDING_PROCESSING

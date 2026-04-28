@@ -17,7 +17,7 @@ import pillow_heif
 pillow_heif.register_heif_opener()
 
 # Setup logging
-logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 # Add API to sys.path to import DB models
@@ -278,16 +278,35 @@ class Worker:
                 # Crop image
                 crop = image.crop((x1, y1, x2, y2))
                 
+                # Upload crop to S3
+                crop_id = uuid.uuid4().hex
+                crop_s3_key = f"user/{user_id}/crops/{crop_id}.jpg"
+                
+                try:
+                    buffer = BytesIO()
+                    crop.save(buffer, format="JPEG", quality=95)
+                    buffer.seek(0)
+                    self.s3.put_object(
+                        Bucket=settings.storage_bucket,
+                        Key=crop_s3_key,
+                        Body=buffer,
+                        ContentType="image/jpeg"
+                    )
+                    logger.info(f"Uploaded crop to S3: {crop_s3_key}")
+                except Exception as e:
+                    logger.error(f"Failed to upload crop to S3: {e}")
+                    # Fallback to full image key if crop upload fails
+                    crop_s3_key = s3_key
+
                 # Save debug crop in local environment
                 if settings.app_env == "local":
-                    crop_id = uuid.uuid4().hex[:8]
-                    crop_filename = f"{category.value}_{crop_id}.jpg"
+                    debug_crop_filename = f"{category.value}_{crop_id[:8]}.jpg"
                     crop_dir = os.path.join(os.path.dirname(__file__), 'debug_crops')
                     os.makedirs(crop_dir, exist_ok=True)
-                    crop_path = os.path.join(crop_dir, crop_filename)
-                    crop.save(crop_path)
-                    logger.info(f"Saved debug crop to {crop_path}")
-                    report["identified_items"][-1]["crop_path"] = crop_path
+                    debug_crop_path = os.path.join(crop_dir, debug_crop_filename)
+                    crop.save(debug_crop_path)
+                    logger.info(f"Saved debug crop to {debug_crop_path}")
+                    report["identified_items"][-1]["crop_path"] = debug_crop_path
                 
                 # Run CLIP for embedding only
                 clip_inputs = self.clip_processor(
@@ -379,6 +398,9 @@ class Worker:
                         category=category,
                         sub_category=predicted_subcat,
                         color=predicted_color,
+                        s3_key=crop_s3_key,
+                        worn_count=1,
+                        last_worn_at=func.now(),
                         embedding=embedding_vector
                     )
                     db.add(item)
