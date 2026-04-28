@@ -2,15 +2,15 @@ import { apiRequest } from './api-client';
 
 export interface PhotoResponse {
   id: string;
-  upload_url: string;
+  uploadUrl: string;
 }
 
 export interface PhotoDetailResponse {
   id: string;
-  user_id: string;
-  s3_key: string;
+  userId: string;
+  s3Key: string;
   status: string;
-  taken_at: string;
+  takenAt: string;
 }
 
 /**
@@ -18,13 +18,14 @@ export interface PhotoDetailResponse {
  */
 export async function createPhotoRecord(
   token: string,
-  taken_at: string
+  taken_at: string,
+  file_hash?: string
 ): Promise<PhotoResponse> {
   return apiRequest<PhotoResponse>(
     '/photos',
     {
       method: 'POST',
-      body: JSON.stringify({ taken_at }),
+      body: JSON.stringify({ taken_at, file_hash }),
     },
     token
   );

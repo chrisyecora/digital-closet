@@ -16,15 +16,15 @@ export function usePhotoUpload() {
       if (!token) throw new Error('Not authenticated');
 
       // 1. Create photo record and get pre-signed URL
-      const { id, upload_url } = await createPhotoRecord(
+      const { id, uploadUrl } = await createPhotoRecord(
         token,
         takenAt || new Date().toISOString()
       );
 
-      console.log(`UPLOAD URL: ${upload_url}`)
+      console.log(`UPLOAD URL: ${uploadUrl}`)
 
       // 2. Upload binary to S3
-      await uploadToS3(upload_url, uri);
+      await uploadToS3(uploadUrl, uri);
 
       // 3. Confirm upload with backend
       return confirmUpload(token, id);
