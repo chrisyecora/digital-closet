@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Architectural Evolution: The "Double-Claude" Orchestrated Pipeline</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+            background-color: #f9f9f9;
+        }
+        h1, h2, h3 {
+            color: #2c3e50;
+        }
+        h1 {
+            border-bottom: 2px solid #eee;
+            padding-bottom: 0.5rem;
+        }
+        code {
+            background-color: #eee;
+            padding: 0.2rem 0.4rem;
+            border-radius: 3px;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+        }
+        pre {
+            background-color: #f4f4f4;
+            padding: 1rem;
+            border-radius: 5px;
+            overflow-x: auto;
+            border-left: 4px solid #2c3e50;
+        }
+        pre code {
+            background-color: transparent;
+            padding: 0;
+        }
+        ul, ol {
+            margin-bottom: 1.5rem;
+        }
+        li {
+            margin-bottom: 0.5rem;
+        }
+        .container {
+            background-color: #fff;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Architectural Evolution: The "Double-Claude" Orchestrated Pipeline</h1>
+        <p>This document captures the final technical plan to migrate the Digital Closet ML pipeline to a high-fidelity, LLM-orchestrated system. This architecture replaces flaky local detection with high-reasoning Visual Grounding and Identity Arbitration using <strong>Claude 3.5 Sonnet</strong>.</p>
+
+        <h2>1. Problem Statement</h2>
+        <ul>
+            <li><strong>Detection Noise:</strong> Local models (OWL-ViT, YOLO) struggle with garment overlaps (e.g., tucked shirts) and complex backgrounds, leading to poor crops.</li>
+            <li><strong>Metadata Poverty:</strong> Standard CV models only provide generic categories (e.g., "top"), which is insufficient for building an intelligent style agent.</li>
+            <li><strong>Matching Ambiguity:</strong> Cosine similarity on embeddings can identify "similar" items but fails to verify "identical" physical garments.</li>
+        </ul>
+
+        <h2>2. The Solution: Double-Claude Orchestration</h2>
+        <p>We will implement a 4-step pipeline that uses Claude 3.5 Sonnet as both the "Eyes" (Grounding) and the "Judge" (Arbitration).</p>
+
+        <h3>Step 1: Visual Grounding & Scene Reasoning (Cloud)</h3>
+        <ul>
+            <li><strong>Model:</strong> Claude 3.5 Sonnet (via Anthropic Tool Use).</li>
+            <li><strong>Task:</strong> Act as a high-precision object detector and metadata engine.</li>
+            <li><strong>Process:</strong> Send the raw photo to Claude.</li>
+            <li><strong>Output:</strong> A structured JSON list of items containing:
+                <ul>
+                    <li><code>box_2d</code>: Precise [ymin, xmin, ymax, xmax] coordinates.</li>
+                    <li><code>metadata</code>: Rich details (Material, exact color, pattern, sub-category, brand guess).</li>
+                </ul>
+            </li>
+            <li><strong>Benefit:</strong> Claude's spatial reasoning handles overlaps and folds far better than specialized CV models.</li>
+        </ul>
+
+        <h3>Step 2: Surgical Retrieval (Local)</h3>
+        <ul>
+            <li><strong>Model:</strong> Python (PIL) + CLIP + pgvector.</li>
+            <li><strong>Task:</strong> Efficiently fetch the most likely candidates from the existing closet.</li>
+            <li><strong>Process:</strong>
+                <ol>
+                    <li>Perform surgical crops using Claude's <code>box_2d</code> coordinates.</li>
+                    <li>Generate a CLIP embedding for each crop.</li>
+                    <li>Query the database for the <strong>Top 5 candidates</strong> in that category.</li>
+                </ol>
+            </li>
+        </ul>
+
+        <h3>Step 3: Identity Arbitration (Cloud)</h3>
+        <ul>
+            <li><strong>Model:</strong> Claude 3.5 Sonnet.</li>
+            <li><strong>Task:</strong> Perform high-precision verification (Visual RAG).</li>
+            <li><strong>Process:</strong> Send Claude a multi-image request containing the <strong>New Item Crop</strong> and <strong>thumbnails of the Top 5 candidates</strong>.</li>
+            <li><strong>Prompt:</strong> "Which of these 5 candidate images, if any, is the <em>exact same physical garment</em> as the new detection? Look for unique wear patterns, tags, or texture."</li>
+            <li><strong>Output:</strong> <code>match_id</code> or <code>null</code>.</li>
+        </ul>
+
+        <h3>Step 4: High-Fidelity Persistence (Database)</h3>
+        <ul>
+            <li><strong>Logic:</strong>
+                <ul>
+                    <li><strong>If Match Found:</strong> Increment <code>worn_count</code>, update <code>last_worn_at</code>, and enrich the existing record with any new metadata Claude provided.</li>
+                    <li><strong>If No Match:</strong> Create a new <code>ClothingItem</code> record using the rich metadata from Step 1.</li>
+                </ul>
+            </li>
+        </ul>
+
+        <h2>2.5 Data Model Specifications</h2>
+        <p>To ensure robust communication between the cloud-based LLM and our local processing worker, we define strict Pydantic schemas for each stage of the pipeline.</p>
+
+        <h3>A. GroundedItem (Stage 1 Output)</h3>
+        <p>This model defines the structured output Claude provides for every detected garment in the raw photo.</p>
+        <pre><code>class GroundedItem(BaseModel):
+    box_2d: List[int] # [ymin, xmin, ymax, xmax] (normalized 0-1000)
+    category: ItemCategory # TOP, BOTTOM, ONE_PIECE, OUTERWEAR, FOOTWEAR, ACTIVEWEAR, SWIMWEAR, INTIMATES, SLEEPWEAR
+    sub_category: str # e.g., "vintage graphic tee", "slim-fit indigo jeans"
+    color: str # Primary color
+    material: Optional[str] # e.g., "denim", "cotton", "leather"
+    pattern: Optional[str] # e.g., "solid", "striped", "floral"
+    reasoning: str # Claude's internal logic for this detection</code></pre>
+
+        <h3>B. IdentityMatch (Stage 3 Output)</h3>
+        <p>This model is used by Claude to arbitrate between the new crop and potential closet candidates.</p>
+        <pre><code>class IdentityMatch(BaseModel):
+    is_exact_match: bool # True if identical physical garment
+    match_id: Optional[UUID] # ID of the matching closet item
+    match_index: Optional[int] # 0-indexed position in candidate list
+    certainty_score: float # 0.0 to 1.0
+    visual_evidence: str # Detailed visual markers (tags, wear, stains) justifying the match</code></pre>
+
+        <h2>3. Implementation Plan</h2>
+        <p><strong>Development Workflow Mandate:</strong> To ensure high code quality and manageable reviews, this migration is strictly divided. Each Phase (and Sub-phase in Phase 2) MUST be the sole scope of an independent feature branch. Development must stop, and a Pull Request must be created, reviewed, and merged before work begins on the next phase.</p>
+
+        <h3>Phase 1: Environment & Schema</h3>
+        <ol>
+            <li><strong>Environment:</strong> Ensure <code>ANTHROPIC_API_KEY</code> is in <code>.env</code>.</li>
+            <li><strong>Dependencies:</strong> Add <code>anthropic</code> to <code>worker/pyproject.toml</code>.</li>
+            <li><strong>Schema Definition:</strong> Create Pydantic models for the "Detection Tool" and "Arbitration Response."</li>
+        </ol>
+
+        <h3>Phase 2.1: Stage 1 - Visual Grounding API Integration</h3>
+        <ul>
+            <li>Implement <code>get_grounded_items_from_claude()</code> using the Anthropic SDK.</li>
+            <li>Finalize the system prompt to reliably extract bounding boxes and rich metadata.</li>
+            <li>Parse Claude's response into the <code>GroundedItem</code> Pydantic schema.</li>
+        </ul>
+
+        <h3>Phase 2.2: Stage 2 - Surgical Cropping & Local Retrieval</h3>
+        <ul>
+            <li>Implement PIL-based surgical cropping using the normalized <code>box_2d</code> coordinates.</li>
+            <li>Standardize CLIP embedding generation specifically for these new cropped images.</li>
+            <li>Refactor database queries to fetch the <strong>Top 5 visual candidates</strong> via <code>pgvector</code> similarity.</li>
+        </ul>
+
+        <h3>Phase 2.3: Stage 3 - Identity Arbitration API Integration</h3>
+        <ul>
+            <li>Implement <code>identify_exact_match_from_claude()</code>.</li>
+            <li>Construct the multi-image Anthropic payload (New item crop + Top 5 candidate thumbnails).</li>
+            <li>Parse Claude's arbitration decision into the <code>IdentityMatch</code> Pydantic schema.</li>
+        </ul>
+
+        <h3>Phase 2.4: Pipeline Orchestration & Persistence</h3>
+        <ul>
+            <li>Refactor the main <code>process_image</code> worker task to chain Stages 1, 2, and 3 sequentially.</li>
+            <li>Implement database persistence logic: incrementing <code>worn_count</code> on a verified match, or creating a new <code>ClothingItem</code> on failure.</li>
+        </ul>
+
+        <h3>Phase 3: Validation & Portfolio</h3>
+        <ol>
+            <li><strong>Mocking:</strong> Heavily mock the Anthropic responses in <code>api/tests/</code> to allow for free, repeatable testing.</li>
+            <li><strong>Impact:</strong> This system provides the <strong>High-Fidelity Knowledge Base</strong> required to build a conversational Style Agent in the next major phase.</li>
+        </ol>
+
+        <h2>4. Resume & Portfolio Signal</h2>
+        <ul>
+            <li><strong>LLM-Based Visual Grounding:</strong> Using LLMs for complex coordinate-based spatial tasks.</li>
+            <li><strong>Advanced Orchestration:</strong> Building a multi-stage pipeline that bridges local CV (CLIP) with cloud reasoning (Claude).</li>
+            <li><strong>High-Precision Identity Verification:</strong> Solving the "Identity Problem" in CV using Visual Retrieval Augmented Generation (Visual RAG).</li>
+        </ul>
+    </div>
+</body>
+</html>
