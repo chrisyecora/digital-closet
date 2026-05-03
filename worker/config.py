@@ -15,8 +15,11 @@ class Settings(BaseSettings):
     storage_bucket: str = "digital-closet-local"
     
     # SQS / ElasticMQ Specific
-    sqs_endpoint: str = "http://localhost:9324"
-    sqs_queue_url: str = "http://localhost:9324/000000000000/photo-uploads"
+    sqs_endpoint: str = "http://127.0.0.1:9324"
+    sqs_queue_url: str = "http://127.0.0.1:9324/000000000000/photo-uploads"
+
+    # Anthropic Settings
+    anthropic_api_key: str = "dummy"
 
     model_config = SettingsConfigDict(env_file="../.env", env_file_encoding="utf-8", extra="ignore")
 
