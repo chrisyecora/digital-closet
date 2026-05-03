@@ -1,9 +1,10 @@
-from pydantic import BaseModel, Field
+from pydantic import Field
 from typing import List, Optional
 from uuid import UUID
 from db_models import ItemCategory
+from models import BaseResponse
 
-class GroundedItem(BaseModel):
+class GroundedItem(BaseResponse):
     box_2d: List[int] = Field(..., description="[ymin, xmin, ymax, xmax] normalized 0-1000")
     category: ItemCategory = Field(..., description="TOP, BOTTOM, ONE_PIECE, OUTERWEAR, FOOTWEAR, ACTIVEWEAR, SWIMWEAR, INTIMATES, SLEEPWEAR")
     sub_category: str = Field(..., description="e.g., 'vintage graphic tee', 'slim-fit indigo jeans'")
@@ -12,7 +13,7 @@ class GroundedItem(BaseModel):
     pattern: Optional[str] = Field(None, description="e.g., 'solid', 'striped', 'floral'")
     reasoning: str = Field(..., description="Claude's internal logic for this detection")
 
-class IdentityMatch(BaseModel):
+class IdentityMatch(BaseResponse):
     is_exact_match: bool = Field(..., description="True if identical physical garment")
     match_id: Optional[UUID] = Field(None, description="ID of the matching closet item")
     match_index: Optional[int] = Field(None, description="0-indexed position in candidate list")
