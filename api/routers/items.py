@@ -42,10 +42,13 @@ def format_item(item: ClothingItem, storage: StorageDependency) -> dict:
     category_map = {
         ItemCategory.TOP.value: "Tops",
         ItemCategory.BOTTOM.value: "Bottoms",
-        ItemCategory.DRESS.value: "Dresses",
+        ItemCategory.ONE_PIECE.value: "One Pieces",
         ItemCategory.OUTERWEAR.value: "Outerwear",
-        ItemCategory.SHOES.value: "Shoes",
-        ItemCategory.ACCESSORY.value: "Accessories"
+        ItemCategory.FOOTWEAR.value: "Footwear",
+        ItemCategory.ACTIVEWEAR.value: "Activewear",
+        ItemCategory.SWIMWEAR.value: "Swimwear",
+        ItemCategory.INTIMATES.value: "Intimates",
+        ItemCategory.SLEEPWEAR.value: "Sleepwear"
     }
     display_category = category_map.get(cat_str, cat_str.capitalize())
 

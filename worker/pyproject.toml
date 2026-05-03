@@ -22,6 +22,7 @@ pillow = "*"
 "opencv-contrib-python" = "<4.11"
 "sqlalchemy" = ">=2.0.48,<3.0.0"
 "ultralytics" = ">=8.4.26,<9.0.0"
+anthropic = "^0.97.0"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]

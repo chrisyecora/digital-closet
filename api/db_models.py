@@ -23,10 +23,13 @@ class PhotoStatus(enum.Enum):
 class ItemCategory(enum.Enum):
     TOP = "top"
     BOTTOM = "bottom"
-    DRESS = "dress"
+    ONE_PIECE = "one_piece"
     OUTERWEAR = "outerwear"
-    SHOES = "shoes"
-    ACCESSORY = "accessory"
+    FOOTWEAR = "footwear"
+    ACTIVEWEAR = "activewear"
+    SWIMWEAR = "swimwear"
+    INTIMATES = "intimates"
+    SLEEPWEAR = "sleepwear"
 
 class User(Base):
     __tablename__ = "users"
@@ -62,6 +65,8 @@ class ClothingItem(Base):
     category = Column(Enum(ItemCategory, native_enum=False))
     sub_category = Column(String)
     color = Column(String)
+    material = Column(String)
+    pattern = Column(String)
     s3_key = Column(String) # Path to the cropped item image
     worn_count = Column(Integer, default=1)
     last_worn_at = Column(DateTime(timezone=True))
@@ -92,6 +97,7 @@ class ItemMatch(Base):
     photo_id = Column(UUID(as_uuid=True), ForeignKey("photos.id", ondelete="CASCADE"), nullable=False)
     clothing_item_id = Column(UUID(as_uuid=True), ForeignKey("clothing_items.id", ondelete="CASCADE"), nullable=False)
     confidence_score = Column(Float)
+    visual_evidence = Column(String)
     was_confirmed = Column(Boolean, default=False)
     was_corrected = Column(Boolean, default=False)
     correct_item_id = Column(UUID(as_uuid=True), ForeignKey("clothing_items.id", ondelete="SET NULL"))

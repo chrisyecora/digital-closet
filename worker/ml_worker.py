@@ -48,10 +48,13 @@ COLORS = [
 SUBCATEGORIES = {
     ItemCategory.TOP: ["t-shirt", "long sleeve shirt", "sweater", "hoodie", "tank top", "blouse", "polo shirt"],
     ItemCategory.BOTTOM: ["jeans", "trousers", "shorts", "sweatpants", "skirt", "leggings"],
-    ItemCategory.SHOES: ["sneakers", "boots", "sandals", "dress shoes", "heels", "loafers"],
+    ItemCategory.FOOTWEAR: ["sneakers", "boots", "sandals", "dress shoes", "heels", "loafers"],
     ItemCategory.OUTERWEAR: ["jacket", "coat", "blazer", "vest", "cardigan"],
-    ItemCategory.ACCESSORY: ["bag", "backpack", "hat", "belt", "scarf", "sunglasses", "watch", "tie"],
-    ItemCategory.DRESS: ["casual dress", "formal dress", "maxi dress", "mini dress", "gown"],
+    ItemCategory.ONE_PIECE: ["casual dress", "formal dress", "maxi dress", "mini dress", "gown", "jumpsuit", "romper"],
+    ItemCategory.ACTIVEWEAR: ["sports bra", "gym shorts", "workout leggings", "track jacket"],
+    ItemCategory.SWIMWEAR: ["bikini", "one-piece swimsuit", "swim trunks", "board shorts"],
+    ItemCategory.INTIMATES: ["bra", "panties", "boxers", "briefs", "undershirt"],
+    ItemCategory.SLEEPWEAR: ["pajama set", "nightgown", "robe", "sleep shirt"]
 }
 
 def calculate_iou(box1, box2):
