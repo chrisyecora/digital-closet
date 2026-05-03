@@ -143,6 +143,7 @@
         <ol>
             <li><strong>Environment:</strong> Ensure <code>ANTHROPIC_API_KEY</code> is in <code>.env</code>.</li>
             <li><strong>Dependencies:</strong> Add <code>anthropic</code> to <code>worker/pyproject.toml</code>.</li>
+            <li><strong>Database Schema:</strong> Expand <code>ItemCategory</code> enum to include <code>ONE_PIECE</code>, <code>FOOTWEAR</code>, <code>ACTIVEWEAR</code>, <code>SWIMWEAR</code>, <code>INTIMATES</code>, and <code>SLEEPWEAR</code>. Add <code>material</code> and <code>pattern</code> columns to <code>ClothingItem</code>, and <code>visual_evidence</code> to <code>ItemMatch</code> via Alembic migrations.</li>
             <li><strong>Schema Definition:</strong> Create Pydantic models for the "Detection Tool" and "Arbitration Response."</li>
         </ol>
 
